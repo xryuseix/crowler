@@ -7,19 +7,10 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"math/rand"
-	"time"
 
 	"github.com/PuerkitoBio/goquery"
 	"xryuseix/crawler/app/lib"
 )
-
-func FakeFetch(url string) string {
-	time.Sleep(time.Duration(rand.Intn(5)) * time.Second)
-
-	fmt.Println("fake fetched")
-	return fmt.Sprintf("<html>%s</html>", url)
-}
 
 type Parser struct {
 	url             string
@@ -100,7 +91,6 @@ func (p *Parser) Parse() {
 		}
 	}
 }
-
 
 // 	url := "https://www.google.com"
 // 	p := NewParser(url)
