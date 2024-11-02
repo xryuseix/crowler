@@ -11,15 +11,19 @@ services:
     depends_on:
       db:
         condition: service_healthy
-  worker:
+      redis:
+        condition: service_healthy
+  mover:
     build:
       context: .
-      dockerfile: docker/worker.Dockerfile
+      dockerfile: docker/mover.Dockerfile
     volumes:
-      - ./worker:/app
+      - ./mover:/app
     restart: always
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
   db:
     image: postgres:17-alpine3.20
@@ -38,3 +42,15 @@ services:
       POSTGRES_DB: db
       POSTGRES_USER: user
       POSTGRES_PASSWORD: postgres
+  redis:
+    image: redis:8.0-M02-alpine3.20
+    ports:
+      # - "6379"
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    restart: always
