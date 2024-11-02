@@ -1,4 +1,4 @@
-package main
+package fetch
 
 import (
 	"fmt"
@@ -7,9 +7,19 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"math/rand"
+	"time"
 
 	"github.com/PuerkitoBio/goquery"
+	"xryuseix/crawler/app/lib"
 )
+
+func FakeFetch(url string) string {
+	time.Sleep(time.Duration(rand.Intn(5)) * time.Second)
+
+	fmt.Println("fake fetched")
+	return fmt.Sprintf("<html>%s</html>", url)
+}
 
 type Parser struct {
 	url             string
@@ -67,7 +77,7 @@ func (p *Parser) Parse() {
 	notNull := func(v string) bool {
 		return v != ""
 	}
-	resourcesLinks = filter(resourcesLinks, notNull)
+	resourcesLinks = lib.Filter(resourcesLinks, notNull)
 
 	for _, link := range resourcesLinks {
 		if strings.HasPrefix(link, "data:") {
@@ -90,3 +100,13 @@ func (p *Parser) Parse() {
 		}
 	}
 }
+
+
+// 	url := "https://www.google.com"
+// 	p := NewParser(url)
+// 	err := p.GetWebPage(url)
+// 	if err != nil {
+// 		log.Fatal(err)
+// 	}
+// 	p.Parse()
+// 	fmt.Println(p.links, p.externalDomains)

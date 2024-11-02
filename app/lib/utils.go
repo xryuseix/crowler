@@ -1,6 +1,6 @@
-package main
+package lib
 
-func filter(vs []string, f func(string) bool) []string {
+func Filter(vs []string, f func(string) bool) []string {
 	vsf := make([]string, 0)
 	for _, v := range vs {
 		if f(v) {

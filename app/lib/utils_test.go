@@ -1,4 +1,4 @@
-package main
+package lib
 
 import (
 	"reflect"
@@ -40,7 +40,7 @@ func TestFilter(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := filter(tt.input, tt.filterFn)
+			result := Filter(tt.input, tt.filterFn)
 			if !reflect.DeepEqual(result, tt.expected) {
 				t.Errorf("expected %v, got %v", tt.expected, result)
 			}
