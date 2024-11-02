@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"sync"
 	"math/rand"
 	"xryuseix/crawler/app/fetch"
 
@@ -30,6 +31,36 @@ var channel = Channel{
 	thread: "thread",
 }
 
+var THREAD_MAX = 8
+type Thread struct {
+	mu sync.Mutex
+	left int
+}
+func (t *Thread) Inc() error {
+	t.mu.Lock()
+	if t.left == THREAD_MAX {
+		t.mu.Unlock()
+		return fmt.Errorf("no thread left")
+	}
+	t.left++
+	t.mu.Unlock()
+	return nil
+}
+func (t *Thread) Dec() error {
+	t.mu.Lock()
+	if t.left == 0 {
+		t.mu.Unlock()
+		return fmt.Errorf("no thread left")
+	}
+	t.left--
+	t.mu.Unlock()
+	return nil
+}
+
+var thread = Thread{
+	left: THREAD_MAX,
+}
+
 func getUrl() string {
 	urls := []string{
 		"https://example.com/1",
@@ -41,20 +72,46 @@ func getUrl() string {
 
 func receiveMoving(msg string) {
 	fmt.Println("msg", msg)
-	html := fetch.FakeFetch(getUrl())
-	if err := redisClient.Publish(ctx, channel.moving, rand.Intn(100)).Err(); err != nil {
-        panic(err)
-    }
-	fmt.Println("fetched", html)
+	
+	if err := thread.Dec(); err != nil {
+		fmt.Println(err)
+		return
+	}
+	
+	fetch := func(t *Thread) {
+		html := fetch.FakeFetch(getUrl())
+		if err := redisClient.Publish(ctx, channel.moving, rand.Intn(100)).Err(); err != nil {
+			panic(err)
+		}
+		fmt.Println("fetched", html)
+		if err := t.Inc(); err != nil {
+			fmt.Println(err)
+			return
+		}
+	}
+	go fetch(&thread)
 }
 
 func receiveThreadFree(msg string) {
 	fmt.Println("msg", msg)
-	html := fetch.FakeFetch(getUrl())
-	if err := redisClient.Publish(ctx, channel.thread, rand.Intn(10)).Err(); err != nil {
-        panic(err)
-    }
-	fmt.Println("fetched", html)
+
+	if err := thread.Dec(); err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fetch := func(t *Thread) {
+		html := fetch.FakeFetch(getUrl())
+		if err := redisClient.Publish(ctx, channel.thread, rand.Intn(10)).Err(); err != nil {
+			panic(err)
+		}
+		fmt.Println("fetched", html)
+		if err := t.Inc(); err != nil {
+			fmt.Println(err)
+			return
+		}
+	}
+	go fetch(&thread)
 }
 
 func (s *Subscriber) receiveMessage(ctx context.Context, quit chan int) (error) {
@@ -102,12 +159,11 @@ func main() {
     go subscribe(ready, quit)
 
 	<-ready
-	if err := redisClient.Publish(ctx, channel.moving, 100).Err(); err != nil {
-        panic(err)
-    }
-	if err := redisClient.Publish(ctx, channel.thread, 3).Err(); err != nil {
-        panic(err)
-    }
+	for i := 0; i < THREAD_MAX; i++ {
+		if err := redisClient.Publish(ctx, channel.thread, i).Err(); err != nil {
+			panic(err)
+		}
+	}
 
 	<-quit
 }
