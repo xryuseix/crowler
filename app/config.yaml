@@ -1,0 +1,19 @@
+# 同時に取得するWorkerの設定
+thread_max: 8
+
+# 開かないサイトの設定
+## same-url...同じURLは二度と開かない
+## same-domain...同じドメインのサイトは二度と開かない
+duplicate: same-domain
+
+# 取得する内容の設定
+fetch_contents:
+  html: true
+  screenshot: false
+  css_js_other: false
+
+# 初期データの設定
+seed_file: seed.txt
+
+# 出力先の設定
+output_dir: out

@@ -5,8 +5,6 @@ import (
 	"sync"
 )
 
-var THREAD_MAX = 8
-
 type Thread struct {
 	mu   sync.Mutex
 	left int
@@ -14,7 +12,7 @@ type Thread struct {
 
 func (t *Thread) Inc() error {
 	t.mu.Lock()
-	if t.left == THREAD_MAX {
+	if t.left == Configs.ThreadMax {
 		t.mu.Unlock()
 		return fmt.Errorf("no thread left")
 	}

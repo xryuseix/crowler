@@ -13,4 +13,5 @@ require (
 	github.com/andybalholm/cascadia v1.3.2 // indirect
 	github.com/go-redis/redis/v8 v8.11.5
 	golang.org/x/net v0.29.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1
 )

@@ -27,7 +27,7 @@ func subscribe(ready, quit chan int) {
 	ready <- 1
 
 	thread := Thread{
-		left: THREAD_MAX,
+		left: Configs.ThreadMax,
 	}
 
 	for {
@@ -45,7 +45,9 @@ func init() {
 		panic(err)
 	}
 
-	// load config
+	if err := loadConf("config.yaml"); err != nil {
+		panic(err)
+	}
 }
 
 func main() {
@@ -54,7 +56,7 @@ func main() {
 	go subscribe(ready, quit)
 
 	<-ready
-	for i := 0; i < THREAD_MAX; i++ {
+	for i := 0; i < Configs.ThreadMax; i++ {
 		if err := redisClient.Publish(ctx, channel.thread, i).Err(); err != nil {
 			panic(err)
 		}
