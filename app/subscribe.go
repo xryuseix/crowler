@@ -81,10 +81,6 @@ func (s *Subscriber) receiveMessage(thread *Thread, msg string) {
 			fmt.Println(err)
 			return
 		}
-
-		if err := rdb.Publish(ctx, channel.thread, fmt.Sprintf("Finished: %s", url)).Err(); err != nil {
-			panic(err)
-		}
 	}
 	go f(thread)
 }

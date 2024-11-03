@@ -1,51 +1,18 @@
 package main
 
 import (
-	"context"
 	"fmt"
-
-	"github.com/go-redis/redis/v8"
-	"gorm.io/gorm"
+	"os"
+	"os/signal"
+	"sync"
 )
 
-var ctx = context.Background()
-var rdb = redis.NewClient(&redis.Options{
-	// TODO: Change to `redis:6379`
-	Addr: "redis:6379",
-	// Addr: "localhost:6379",
-})
-var channel = Channel{
-	moving: "moving",
-	thread: "thread",
-}
-
-func subscribe(ready, quit chan int, db *gorm.DB) {
-	subscriber := Subscriber{
-		moving: rdb.Subscribe(ctx, channel.moving),
-		thread: rdb.Subscribe(ctx, channel.thread),
-		db:     db,
-	}
-	ready <- 1
-
-	thread := Thread{
-		left: Configs.ThreadMax,
-	}
-
-	for {
-		err := subscriber.receiveMessageMngr(ctx, quit, &thread)
-		if err != nil {
-			fmt.Println(err)
-			break
-		}
-	}
+type ContainerMngr struct {
+	mu sync.Mutex
+	containers []*Container
 }
 
 func init() {
-	_, err := rdb.Ping(ctx).Result()
-	if err != nil {
-		panic(err)
-	}
-
 	if err := loadConf("config.yaml"); err != nil {
 		panic(err)
 	}
@@ -57,16 +24,33 @@ func main() {
 		panic(err)
 	}
 
-	quit := make(chan int)
-	ready := make(chan int)
-	go subscribe(ready, quit, db)
-
-	<-ready
+	var wg sync.WaitGroup
+	cm := &ContainerMngr{
+		containers: make([]*Container, 0, Configs.ThreadMax),
+	}
+	
 	for i := 0; i < Configs.ThreadMax; i++ {
-		if err := rdb.Publish(ctx, channel.thread, i).Err(); err != nil {
-			panic(err)
-		}
+		wg.Add(1)
+		go func(){
+			c := NewContainer(i, db)
+			cm.mu.Lock()
+			cm.containers = append(cm.containers, c)
+			cm.mu.Unlock()
+			c.Start()
+		}()
+	}
+	
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt)
+	<-quit
+
+	for _, c := range cm.containers {
+		go func(c *Container) {
+			fmt.Printf("[%d] stopping...\n", c.id)
+			defer wg.Done()
+			c.Stop()
+		}(c)
 	}
 
-	<-quit
+	wg.Wait()
 }

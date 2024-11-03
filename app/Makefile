@@ -4,7 +4,7 @@ $(TOOLS):
 	go install $(TOOLS)
 
 run:
-	go run .
+	trap 'exit 0' SIGINT; go run .
 
 test:
 	go test ./...
