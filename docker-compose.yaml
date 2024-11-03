@@ -2,7 +2,7 @@ services:
   app:
     build:
       context: .
-      dockerfile: docker/app.Dockerfile
+      dockerfile: Dockerfile
     ports:
       - "8080"
     volumes:
@@ -13,43 +13,16 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      redis:
-        condition: service_healthy
-  mover:
-    build:
-      context: .
-      dockerfile: docker/mover.Dockerfile
-    volumes:
-      - ./mover:/app
-    restart: always
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
   db:
     image: postgres:17-alpine3.20
     ports:
-      # - "5432"
-      - "5432:5432"
+      - "5432"
     volumes:
       - ./db:/var/lib/postgresql/data
     env_file:
       - .env
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB} || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 5s
-    restart: always
-  redis:
-    image: redis:8.0-M02-alpine3.20
-    ports:
-      # - "6379"
-      - "6379:6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5

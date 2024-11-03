@@ -1,5 +1,5 @@
 # 同時に取得するWorkerの設定
-thread_max: 8
+thread_max: 3
 
 # 開かないサイトの設定
 ## same-url...同じURLは二度と開かない
