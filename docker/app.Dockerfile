@@ -6,4 +6,4 @@ COPY ../app .
 
 RUN go mod download
 
-CMD [ "tail", "-f", "/dev/null" ]
+CMD [ "make", "run" ]

@@ -3,14 +3,18 @@ package main
 import (
 	"context"
 	"fmt"
-	"math/rand"
+	"net/url"
+
+	"xryuseix/crawler/app/fetch"
 
 	"github.com/go-redis/redis/v8"
+	"gorm.io/gorm"
 )
 
 type Subscriber struct {
 	moving *redis.PubSub
 	thread *redis.PubSub
+	db     *gorm.DB
 }
 
 type Channel struct {
@@ -18,13 +22,13 @@ type Channel struct {
 	thread string
 }
 
-func (s *Subscriber) receiveMessage(ctx context.Context, quit chan int, thread *Thread) error {
+func (s *Subscriber) receiveMessageMngr(ctx context.Context, quit chan int, thread *Thread) error {
 	select {
 	case msg := <-s.moving.Channel():
-		s.receiveMoving(thread, msg.Payload)
+		s.receiveMessage(thread, msg.Payload)
 		return nil
 	case msg := <-s.thread.Channel():
-		s.receiveThreadFree(thread, msg.Payload)
+		s.receiveMessage(thread, msg.Payload)
 		return nil
 	case <-ctx.Done():
 		quit <- 1
@@ -32,7 +36,7 @@ func (s *Subscriber) receiveMessage(ctx context.Context, quit chan int, thread *
 	}
 }
 
-func (s *Subscriber) receiveMoving(thread *Thread, msg string) {
+func (s *Subscriber) receiveMessage(thread *Thread, msg string) {
 	fmt.Println("msg", msg)
 
 	if err := thread.Dec(); err != nil {
@@ -40,38 +44,47 @@ func (s *Subscriber) receiveMoving(thread *Thread, msg string) {
 		return
 	}
 
-	fetch := func(t *Thread) {
-		html := fakeFetch(getUrl())
-		if err := redisClient.Publish(ctx, channel.moving, rand.Intn(100)).Err(); err != nil {
-			panic(err)
+	f := func(t *Thread) {
+		_url := getFakeUrl()
+		url, err := url.Parse(_url)
+		if err != nil {
+			fmt.Println(err)
+			return
 		}
+		html := fakeFetch(url)
 		fmt.Println("fetched", html)
+
+		p := fetch.NewParser(url)
+		p.HTML = html
+		if err := p.Parse(); err != nil {
+			fmt.Println(err)
+			return
+		}
+		p.HTML = p.ReplaceInternalDomains(p.HTML)
+		dir, file := p.Url2filename()
+
+		queues := make([]Queue, 0, len(p.Links))
+		for _, link := range p.Links {
+			queues = append(queues, Queue{
+				url: link,
+			})
+		}
+		fmt.Println("queues", queues, p.Links)
+		s.db.Create(&queues)
+		s.db.Create(&Visited{
+			url:      url.String(),
+			domain:   url.Host,
+			savePath: fmt.Sprintf("%s/%s", dir, file),
+		})
+
 		if err := t.Inc(); err != nil {
 			fmt.Println(err)
 			return
 		}
-	}
-	go fetch(thread)
-}
 
-func (s *Subscriber) receiveThreadFree(thread *Thread, msg string) {
-	fmt.Println("msg", msg)
-
-	if err := thread.Dec(); err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	fetch := func(t *Thread) {
-		html := fakeFetch(getUrl())
-		if err := redisClient.Publish(ctx, channel.thread, rand.Intn(10)).Err(); err != nil {
+		if err := rdb.Publish(ctx, channel.thread, fmt.Sprintf("Finished: %s", url)).Err(); err != nil {
 			panic(err)
 		}
-		fmt.Println("fetched", html)
-		if err := t.Inc(); err != nil {
-			fmt.Println(err)
-			return
-		}
 	}
-	go fetch(thread)
+	go f(thread)
 }

@@ -11,10 +11,10 @@ import (
 func main() {
 	log.Println("Consumer started")
 
-	redisClient := redis.NewClient(&redis.Options{
+	rdb := redis.NewClient(&redis.Options{
 		Addr: fmt.Sprintf("%s:%s", "redis", "6379"),
 	})
-	_, err := redisClient.Ping().Result()
+	_, err := rdb.Ping().Result()
 	if err != nil {
 		log.Fatal("Unbale to connect to Redis", err)
 	}
@@ -24,7 +24,7 @@ func main() {
 	subject := "tickets"
 	consumersGroup := "tickets-consumer-group"
 
-	err = redisClient.XGroupCreate(subject, consumersGroup, "0").Err()
+	err = rdb.XGroupCreate(subject, consumersGroup, "0").Err()
 	if err != nil {
 		log.Println(err)
 	}
@@ -32,7 +32,7 @@ func main() {
 	uniqueID := xid.New().String()
 
 	for {
-		entries, err := redisClient.XReadGroup(&redis.XReadGroupArgs{
+		entries, err := rdb.XReadGroup(&redis.XReadGroupArgs{
 			Group:    consumersGroup,
 			Consumer: uniqueID,
 			Streams:  []string{subject, ">"},
@@ -56,7 +56,7 @@ func main() {
 				if err != nil {
 					log.Fatal(err)
 				}
-				redisClient.XAck(subject, consumersGroup, messageID)
+				rdb.XAck(subject, consumersGroup, messageID)
 			}
 		}
 	}

@@ -8,28 +8,34 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/PuerkitoBio/goquery"
 	"xryuseix/crawler/app/lib"
+
+	"github.com/PuerkitoBio/goquery"
 )
 
-type Parser struct {
-	url             string
-	html            string
-	links           []string
-	externalDomains []string
+type InternalUrl struct {
+	from string
+	to   string
 }
 
-func NewParser(url string) *Parser {
+type Parser struct {
+	url          *url.URL
+	HTML         string
+	Links        []string
+	InternalUrls []InternalUrl
+}
+
+func NewParser(url *url.URL) *Parser {
 	return &Parser{
-		url:             url,
-		html:            "",
-		links:           make([]string, 0),
-		externalDomains: make([]string, 0),
+		url:          url,
+		HTML:         "",
+		Links:        make([]string, 0),
+		InternalUrls: make([]InternalUrl, 0),
 	}
 }
 
-func (p *Parser) GetWebPage(url string) error {
-	resp, err := http.Get(url)
+func (p *Parser) GetWebPage(url *url.URL) error {
+	resp, err := http.Get(url.String())
 	if err != nil {
 		return err
 	}
@@ -39,14 +45,17 @@ func (p *Parser) GetWebPage(url string) error {
 	if err != nil {
 		return err
 	}
-	p.html = string(body)
+	p.HTML = string(body)
 	return nil
 }
 
-func (p *Parser) Parse() {
-	doc, err := goquery.NewDocumentFromReader(strings.NewReader(p.html))
+func (p *Parser) Parse() error {
+	if p.HTML == "" {
+		return fmt.Errorf("HTML is empty")
+	}
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(p.HTML))
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	var resourcesLinks []string
@@ -77,26 +86,33 @@ func (p *Parser) Parse() {
 		if strings.Contains(link, " ") {
 			link = strings.Split(link, " ")[0]
 		}
+		if strings.HasPrefix(link, "http://") || strings.HasPrefix(link, "https://") {
+			p.Links = append(p.Links, link)
+			continue
+		}
 
 		u, err := url.Parse(link)
 		if err != nil {
 			log.Fatal(err)
 		}
-		if strings.HasPrefix(link, "http://") || strings.HasPrefix(link, "https://") {
-			p.externalDomains = append(p.externalDomains, fmt.Sprintf("%s://%s", u.Scheme, u.Host))
-			p.links = append(p.links, link)
-		} else {
-			newUrl := u.ResolveReference(u).String()
-			p.links = append(p.links, newUrl)
-		}
+		newUrl := p.url.ResolveReference(u).String()
+		p.Links = append(p.Links, newUrl)
+		p.InternalUrls = append(p.InternalUrls, InternalUrl{
+			from: link,
+			to:   newUrl,
+		})
 	}
+	return nil
 }
 
-// 	url := "https://www.google.com"
-// 	p := NewParser(url)
-// 	err := p.GetWebPage(url)
-// 	if err != nil {
-// 		log.Fatal(err)
-// 	}
-// 	p.Parse()
-// 	fmt.Println(p.links, p.externalDomains)
+func (p *Parser) Url2filename() (string, string) {
+	pathParts := strings.Split(strings.TrimPrefix(p.url.Path, "/"), "/")
+	return strings.Join(pathParts[:len(pathParts)-1], "/"), pathParts[len(pathParts)-1]
+}
+
+func (p *Parser) ReplaceInternalDomains(html string) string {
+	for _, domain := range p.InternalUrls {
+		html = strings.ReplaceAll(html, domain.from, domain.to)
+	}
+	return html
+}

@@ -11,10 +11,10 @@ import (
 func main() {
 	log.Println("Publisher started")
 
-	redisClient := redis.NewClient(&redis.Options{
+	rdb := redis.NewClient(&redis.Options{
 		Addr: fmt.Sprintf("%s:%s", "redis", "6379"),
 	})
-	_, err := redisClient.Ping().Result()
+	_, err := rdb.Ping().Result()
 	if err != nil {
 		log.Fatal("Unbale to connect to Redis", err)
 	}
@@ -22,7 +22,7 @@ func main() {
 	log.Println("Connected to Redis server")
 
 	for i := 0; i < 3000; i++ {
-		err = publishTicketReceivedEvent(redisClient)
+		err = publishTicketReceivedEvent(rdb)
 		if err != nil {
 			log.Fatal(err)
 		}

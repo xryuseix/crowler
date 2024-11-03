@@ -4,6 +4,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 )
@@ -27,14 +28,18 @@ func TestGetWebPage(t *testing.T) {
 
 	defer func() { testServer.Close() }()
 
+	u, err := url.Parse(testServer.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
 	tests := []struct {
 		name         string
-		url          string
+		url          *url.URL
 		expectedBody string
 	}{
 		{
 			name:         "test1",
-			url:          testServer.URL,
+			url:          u,
 			expectedBody: "OK",
 		},
 	}
@@ -53,25 +58,29 @@ func TestGetWebPage(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			if parser.html != tc.expectedBody {
-				t.Errorf("expected %s; got %s", tc.expectedBody, parser.html)
+			if parser.HTML != tc.expectedBody {
+				t.Errorf("expected %s; got %s", tc.expectedBody, parser.HTML)
 			}
 		})
 	}
 }
 
 func TestParser_Parse(t *testing.T) {
+	u, err := url.Parse("http://example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
 	tests := []struct {
 		name            string
 		html            string
-		url             string
+		url             *url.URL
 		expectedLinks   []string
 		expectedDomains []string
 	}{
 		{
 			name: "test1",
 			html: `<html><head><link href="http://example.com/style.css"></head><body><img src="http://example.com/image.jpg"><script src="http://example.com/script.js"></script></body></html>`,
-			url:  "http://example.com",
+			url:  u,
 			expectedLinks: []string{
 				"http://example.com/style.css",
 				"http://example.com/image.jpg",
@@ -84,7 +93,7 @@ func TestParser_Parse(t *testing.T) {
 		{
 			name: "test2",
 			html: `<html><head><link href="/style.css"></head><body><img src="/image.jpg"><script src="/script.js"></script></body></html>`,
-			url:  "http://example.com",
+			url:  u,
 			expectedLinks: []string{
 				"http://example.com/style.css",
 				"http://example.com/image.jpg",
@@ -99,22 +108,22 @@ func TestParser_Parse(t *testing.T) {
 			parser := NewParser(tc.url)
 			parser.Parse()
 
-			if len(parser.links) != len(tc.expectedLinks) {
-				t.Errorf("expected %d links; got %d", len(tc.expectedLinks), len(parser.links))
+			if len(parser.Links) != len(tc.expectedLinks) {
+				t.Errorf("expected %d links; got %d", len(tc.expectedLinks), len(parser.Links))
 			}
 
-			for i, link := range parser.links {
+			for i, link := range parser.Links {
 				if link != tc.expectedLinks[i] {
 					t.Errorf("expected link %s; got %s", tc.expectedLinks[i], link)
 				}
 			}
 
-			if len(parser.externalDomains) != len(tc.expectedDomains) {
-				t.Errorf("expected %d external domains; got %d", len(tc.expectedDomains), len(parser.externalDomains))
+			if len(parser.InternalUrls) != len(tc.expectedDomains) {
+				t.Errorf("expected %d external domains; got %d", len(tc.expectedDomains), len(parser.InternalUrls))
 			}
 
-			for i, domain := range parser.externalDomains {
-				if domain != tc.expectedDomains[i] {
+			for i, domain := range parser.InternalUrls {
+				if domain.from != tc.expectedDomains[i] {
 					t.Errorf("expected domain %s; got %s", tc.expectedDomains[i], domain)
 				}
 			}

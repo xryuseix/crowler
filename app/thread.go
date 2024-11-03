@@ -20,6 +20,7 @@ func (t *Thread) Inc() error {
 	t.mu.Unlock()
 	return nil
 }
+
 func (t *Thread) Dec() error {
 	t.mu.Lock()
 	if t.left == 0 {
