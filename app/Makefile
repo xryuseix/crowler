@@ -17,3 +17,6 @@ fmt:
 
 gen:
 	go generate ./...
+
+clean:
+	rm -rf app out/* ../db/*

@@ -8,7 +8,7 @@ import (
 )
 
 type ContainerMngr struct {
-	mu sync.Mutex
+	mu         sync.Mutex
 	containers []*Container
 }
 
@@ -23,15 +23,16 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	InsertSeed(db)
 
 	var wg sync.WaitGroup
 	cm := &ContainerMngr{
 		containers: make([]*Container, 0, Configs.ThreadMax),
 	}
-	
+
 	for i := 0; i < Configs.ThreadMax; i++ {
 		wg.Add(1)
-		go func(){
+		go func() {
 			c := NewContainer(i, db)
 			cm.mu.Lock()
 			cm.containers = append(cm.containers, c)
@@ -39,7 +40,7 @@ func main() {
 			c.Start()
 		}()
 	}
-	
+
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt)
 	<-quit

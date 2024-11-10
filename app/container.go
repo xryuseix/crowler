@@ -2,8 +2,10 @@ package main
 
 import (
 	"fmt"
+	"net/url"
 	"time"
-	"math/rand"
+
+	"xryuseix/crawler/app/fetch"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -29,11 +31,22 @@ func (c *Container) Start() error {
 		if !c.running {
 			return nil
 		}
-		fmt.Printf("[%d] running...\n", c.id)
 		time.Sleep(2 * time.Second)
-		c.QueueingURL()
-		c.QueueingURL()
-		c.DeQueueingURL()
+		fmt.Printf("[%d] running...\n", c.id)
+		q, err := c.DeQueueingURL()
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
+
+		v, nq, err := c.Fetch(q.URL)
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
+
+		c.InsertFetchResultToDB(v)
+		c.QueueingURL(nq)
 	}
 }
 
@@ -42,24 +55,50 @@ func (c *Container) Stop() {
 	fmt.Printf("[%d] stopped\n", c.id)
 }
 
-// func (c *Container) Fetch() error {
-// 	_url := getFakeUrl()
-// 		url, err := url.Parse(_url)
-// 		if err != nil {
-// 			fmt.Println(err)
-// 			return
-// 		}
-// 		html := fakeFetch(url)
-// 		fmt.Println("fetched", html)
-// }
+func (c *Container) Fetch(_url string) (Visited, []*Queue, error) {
+	time.Sleep(3 * time.Second)
 
-func (c *Container) QueueingURL() error {
-	// INSERT INTO queues (url) VALUES ('https://example.com');
-	queue := Queue{
-		URL: fmt.Sprintf("https://example.com/%d/%d", c.id, rand.Intn(10000)),
+	url, err := url.Parse(_url)
+	if err != nil {
+		fmt.Println(err)
+		return Visited{}, []*Queue{}, err
 	}
-	c.db.Create(&queue)
-	return nil
+
+	p := fetch.NewParser(url)
+	// p.HTML = fakeFetch(url)
+	if err := p.GetWebPage(url); err != nil {
+		fmt.Println(err)
+		return Visited{}, []*Queue{}, err
+	}
+	if err := p.Parse(); err != nil {
+		fmt.Println(err)
+		return Visited{}, []*Queue{}, err
+	}
+	p.HTML = p.ReplaceInternalDomains(p.HTML)
+
+	d := fetch.NewDownloader(url, p.HTML, p.ResourceLinks)
+	d.DownloadFiles()
+
+	queues := make([]*Queue, 0, len(p.Links))
+	for _, link := range p.Links {
+		queues = append(queues, &Queue{
+			URL: link,
+		})
+	}
+
+	// URLからparamを消す
+	v := Visited{
+		URL:     url.String(),
+		Domain:  url.Host,
+		SaveDir: d.SaveDir,
+	}
+
+	return v, queues, nil
+}
+
+func (c *Container) QueueingURL(q []*Queue) {
+	// INSERT INTO queues (url) VALUES ('https://example.com');
+	c.db.Create(&q)
 }
 
 func (c *Container) DeQueueingURL() (Queue, error) {
@@ -76,10 +115,16 @@ func (c *Container) DeQueueingURL() (Queue, error) {
 		),
 	).Delete(&queue)
 
-	fmt.Printf("result: %#+v\n", queue)
+	if queue.Id == 0 && queue.URL == "" {
+		return Queue{}, fmt.Errorf("queue is empty")
+	}
 	return queue, nil
 }
 
-func (c *Container) InsertFetchResultToDB() error {
-	return nil
+func (c *Container) InsertFetchResultToDB(v Visited) {
+	c.db.Create(&v)
+}
+
+func (c *Container) Save() {
+	return
 }

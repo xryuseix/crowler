@@ -42,5 +42,5 @@ func fakeFetch(url *url.URL) string {
 		htmlLink += fmt.Sprintf("<a href=\"%s?page=%d\">Link</a>", url.String(), p)
 	}
 
-	return fmt.Sprintf("<html>%s</html>", htmlLink)
+	return fmt.Sprintf("<html><body>%s</body></html>", htmlLink)
 }

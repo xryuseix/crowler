@@ -13,24 +13,30 @@ import (
 	"github.com/PuerkitoBio/goquery"
 )
 
-type InternalUrl struct {
+type ExternalUrl struct {
 	from string
 	to   string
 }
 
 type Parser struct {
-	url          *url.URL
-	HTML         string
-	Links        []string
-	InternalUrls []InternalUrl
+	url  *url.URL
+	HTML string
+	// aタグで移動することができるリンク
+	Links []string
+	// 画像やスクリプトなどのリソースリンク
+	ResourceLinks []string
+	// リソースリンクのうち、内部リンクを除いたもの
+	// 外部リンクは内部リンクに変換する
+	ExternalUrls []ExternalUrl
 }
 
 func NewParser(url *url.URL) *Parser {
 	return &Parser{
-		url:          url,
-		HTML:         "",
-		Links:        make([]string, 0),
-		InternalUrls: make([]InternalUrl, 0),
+		url:           url,
+		HTML:          "",
+		Links:         make([]string, 0),
+		ResourceLinks: make([]string, 0),
+		ExternalUrls:  make([]ExternalUrl, 0),
 	}
 }
 
@@ -73,45 +79,59 @@ func (p *Parser) Parse() error {
 		resourcesLinks = append(resourcesLinks, src)
 	})
 
-	// Removing any empty links
+	var anchorLinks []string
+	doc.Find("a").Each(func(i int, s *goquery.Selection) {
+		link, _ := s.Attr("href")
+		anchorLinks = append(anchorLinks, link)
+	})
+
+	// Removing invalid links
 	notNull := func(v string) bool {
 		return v != ""
 	}
-	resourcesLinks = lib.Filter(resourcesLinks, notNull)
-
-	for _, link := range resourcesLinks {
-		if strings.HasPrefix(link, "data:") {
-			continue
-		}
-		if strings.Contains(link, " ") {
-			link = strings.Split(link, " ")[0]
-		}
-		if strings.HasPrefix(link, "http://") || strings.HasPrefix(link, "https://") {
-			p.Links = append(p.Links, link)
-			continue
-		}
-
-		u, err := url.Parse(link)
-		if err != nil {
-			log.Fatal(err)
-		}
-		newUrl := p.url.ResolveReference(u).String()
-		p.Links = append(p.Links, newUrl)
-		p.InternalUrls = append(p.InternalUrls, InternalUrl{
-			from: link,
-			to:   newUrl,
-		})
+	notDataSchema := func(v string) bool {
+		return !strings.HasPrefix(v, "data:")
 	}
+	resourcesLinks = lib.Filter(lib.Filter(resourcesLinks, notNull), notDataSchema)
+	resourcesLinks = lib.SplitBySpace(resourcesLinks)
+	anchorLinks = lib.Filter(lib.Filter(anchorLinks, notNull), notDataSchema)
+	anchorLinks = lib.SplitBySpace(anchorLinks)
+
+	f := func(links []string) ([]string, []ExternalUrl) {
+		l := []string{}
+		eu := []ExternalUrl{}
+		for _, link := range links {
+			l = append(l, link)
+			if strings.HasPrefix(link, "http://") || strings.HasPrefix(link, "https://") {
+				u, err := url.Parse(link)
+				if err != nil {
+					log.Fatal(err)
+					continue
+				}
+				eu = append(eu, ExternalUrl{
+					from: link,
+					to:   fmt.Sprintf(".%s", u.RequestURI()),
+				})
+			}
+		}
+		return l, eu
+	}
+
+	rlinks, reurl := f(resourcesLinks)
+	p.ResourceLinks = append(p.ResourceLinks, rlinks...)
+	p.ExternalUrls = append(p.ExternalUrls, reurl...)
+
+	p.Links = append(p.Links, anchorLinks...)
+
+	p.Links = lib.Unique(p.Links)
+	p.ResourceLinks = lib.Unique(p.ResourceLinks)
+	p.ExternalUrls = lib.Unique(p.ExternalUrls)
+
 	return nil
 }
 
-func (p *Parser) Url2filename() (string, string) {
-	pathParts := strings.Split(strings.TrimPrefix(p.url.Path, "/"), "/")
-	return strings.Join(pathParts[:len(pathParts)-1], "/"), pathParts[len(pathParts)-1]
-}
-
 func (p *Parser) ReplaceInternalDomains(html string) string {
-	for _, domain := range p.InternalUrls {
+	for _, domain := range p.ExternalUrls {
 		html = strings.ReplaceAll(html, domain.from, domain.to)
 	}
 	return html

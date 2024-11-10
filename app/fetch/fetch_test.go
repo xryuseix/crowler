@@ -118,11 +118,11 @@ func TestParser_Parse(t *testing.T) {
 				}
 			}
 
-			if len(parser.InternalUrls) != len(tc.expectedDomains) {
-				t.Errorf("expected %d external domains; got %d", len(tc.expectedDomains), len(parser.InternalUrls))
+			if len(parser.ExternalUrls) != len(tc.expectedDomains) {
+				t.Errorf("expected %d external domains; got %d", len(tc.expectedDomains), len(parser.ExternalUrls))
 			}
 
-			for i, domain := range parser.InternalUrls {
+			for i, domain := range parser.ExternalUrls {
 				if domain.from != tc.expectedDomains[i] {
 					t.Errorf("expected domain %s; got %s", tc.expectedDomains[i], domain)
 				}
