@@ -8,10 +8,12 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"xryuseix/crawler/app/config"
 )
 
 type Downloader struct {
-	base   *url.URL
+	base    *url.URL
 	links   []string
 	html    string
 	SaveDir string
@@ -41,11 +43,22 @@ func (d *Downloader) url2dirname(_url *url.URL) string {
 }
 
 func (d *Downloader) DownloadFiles() {
+	if !config.Configs.FetchContents.Html || !config.Configs.FetchContents.CssJsOther {
+		return
+	}
+
 	downloadDir := filepath.Join("out", d.SaveDir, "contents")
 	if _, err := os.Stat(d.SaveDir); os.IsNotExist(err) {
 		os.MkdirAll(downloadDir, os.ModePerm)
 	}
-	d.SaveHTML(downloadDir)
+
+	if config.Configs.FetchContents.Html {
+		d.SaveHTML(downloadDir)
+	}
+
+	if !config.Configs.FetchContents.CssJsOther {
+		return
+	}
 
 	for _, link := range d.links {
 		u, err := url.Parse(link)

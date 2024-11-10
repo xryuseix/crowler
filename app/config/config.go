@@ -1,4 +1,4 @@
-package main
+package config
 
 import (
 	"os"
@@ -31,7 +31,7 @@ type Env struct {
 var Configs *Config
 var Envs *Env
 
-func loadConf(path string) error {
+func LoadConf(path string) error {
 	yml, err := os.ReadFile(path)
 	if err != nil {
 		return err

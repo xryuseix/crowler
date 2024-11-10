@@ -5,6 +5,8 @@ import (
 	"os"
 	"os/signal"
 	"sync"
+
+	"xryuseix/crawler/app/config"
 )
 
 type ContainerMngr struct {
@@ -13,7 +15,7 @@ type ContainerMngr struct {
 }
 
 func init() {
-	if err := loadConf("config.yaml"); err != nil {
+	if err := config.LoadConf("config.yaml"); err != nil {
 		panic(err)
 	}
 }
@@ -27,10 +29,10 @@ func main() {
 
 	var wg sync.WaitGroup
 	cm := &ContainerMngr{
-		containers: make([]*Container, 0, Configs.ThreadMax),
+		containers: make([]*Container, 0, config.Configs.ThreadMax),
 	}
 
-	for i := 0; i < Configs.ThreadMax; i++ {
+	for i := 0; i < config.Configs.ThreadMax; i++ {
 		wg.Add(1)
 		go func() {
 			c := NewContainer(i, db)

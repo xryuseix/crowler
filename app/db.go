@@ -7,6 +7,8 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
+
+	"xryuseix/crawler/app/config"
 )
 
 type Queue struct {
@@ -21,7 +23,8 @@ type Visited struct {
 }
 
 func CreateDB() (*gorm.DB, error) {
-	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=Asia/Tokyo", Envs.DBHost, Envs.User, Envs.Password, Envs.DBName, Envs.DBPort)
+	e := config.Envs
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=Asia/Tokyo", e.DBHost, e.User, e.Password, e.DBName, e.DBPort)
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
 		CreateBatchSize: 1000,
 		Logger:          logger.Default.LogMode(logger.Info),
