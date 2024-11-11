@@ -17,6 +17,7 @@ type Config struct {
 	Duplicate     string       `yaml:"duplicate"`
 	FetchContents FetchContent `yaml:"fetch_contents"`
 	SeedFile      string       `yaml:"seed_file"`
+	RandomSeed    bool         `yaml:"random_seed"`
 	OutputDir     string       `yaml:"output_dir"`
 }
 

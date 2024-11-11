@@ -14,6 +14,7 @@ fetch_contents:
 
 # 初期データの設定
 seed_file: seed.txt
+random_seed: false
 
 # 出力先の設定
 output_dir: out

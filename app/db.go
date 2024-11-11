@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"math/rand"
+	"strings"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -56,7 +58,26 @@ func BuildDB() (*gorm.DB, error) {
 }
 
 func InsertSeed(db *gorm.DB) {
-	n := 5
+	if config.Configs.SeedFile == "" {
+		return
+	}
+	var q []*Queue = make([]*Queue, 0)
+	b, err := os.ReadFile(config.Configs.SeedFile)
+	if err != nil {
+		panic(err)
+	}
+	lines := strings.Split(string(b), "\n")
+	for _, line := range lines {
+		if line == "" {
+			continue
+		}
+		q = append(q, &Queue{URL: line})
+	}
+	db.Create(&q)
+}
+
+func InsertRandomSeed(db *gorm.DB) {
+	n := config.Configs.ThreadMax * 2
 	var q []*Queue = make([]*Queue, 0, n)
 	for i := 0; i < n; i++ {
 		q = append(q, &Queue{

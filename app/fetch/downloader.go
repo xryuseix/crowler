@@ -43,7 +43,7 @@ func (d *Downloader) url2dirname(_url *url.URL) string {
 }
 
 func (d *Downloader) DownloadFiles() {
-	if !config.Configs.FetchContents.Html || !config.Configs.FetchContents.CssJsOther {
+	if !config.Configs.FetchContents.Html && !config.Configs.FetchContents.CssJsOther {
 		return
 	}
 

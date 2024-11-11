@@ -56,22 +56,23 @@ func (c *Container) Stop() {
 }
 
 func (c *Container) Fetch(_url string) (Visited, []*Queue, error) {
-	time.Sleep(3 * time.Second)
-
 	url, err := url.Parse(_url)
 	if err != nil {
 		fmt.Println(err)
 		return Visited{}, []*Queue{}, err
 	}
 
+	fmt.Printf("[%d] fetching %s\n", c.id, url.String())
+
 	p := fetch.NewParser(url)
-	// p.HTML = fakeFetch(url)
 	if err := p.GetWebPage(url); err != nil {
 		fmt.Println(err)
+		time.Sleep(time.Second)
 		return Visited{}, []*Queue{}, err
 	}
 	if err := p.Parse(); err != nil {
 		fmt.Println(err)
+		time.Sleep(time.Second)
 		return Visited{}, []*Queue{}, err
 	}
 	p.HTML = p.ReplaceInternalDomains(p.HTML)
@@ -86,7 +87,7 @@ func (c *Container) Fetch(_url string) (Visited, []*Queue, error) {
 		})
 	}
 
-	// URLからparamを消す
+	// TODO: URLからparamを消す
 	v := Visited{
 		URL:     url.String(),
 		Domain:  url.Host,

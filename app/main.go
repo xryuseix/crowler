@@ -25,7 +25,12 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	InsertSeed(db)
+	if config.Configs.SeedFile != "" {
+		InsertSeed(db)
+	}
+	if config.Configs.RandomSeed {
+		InsertRandomSeed(db)
+	}
 
 	var wg sync.WaitGroup
 	cm := &ContainerMngr{
