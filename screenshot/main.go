@@ -6,27 +6,53 @@ import (
 	"os"
 	"time"
 
+	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/dom"
-	// "github.com/chromedp/cdproto/network"
-	cdp "github.com/chromedp/chromedp"
+	"github.com/chromedp/cdproto/fetch"
+	"github.com/chromedp/chromedp"
 )
 
-type CDPRes struct {
-	HTML string
-	Shot []byte
+type chromedpRes struct {
+	HTML       string
+	Shot       []byte
+	requestURL []string
 }
 
-func GetHTMLandSS(_ctx context.Context, url string) (CDPRes, error) {
-	ctx, cancel := cdp.NewContext(_ctx)
+func GetExecutor(ctx context.Context) context.Context {
+	c := chromedp.FromContext(ctx)
+	return cdp.WithExecutor(ctx, c.Target)
+}
+
+func GetHTMLandSS(url string) (chromedpRes, []error) {
+	ctx, cancel := chromedp.NewContext(
+		context.Background(),
+		// chromedp.WithDebugf(log.Printf),
+	)
 	defer cancel()
+
+	var requestURL []string
+	var errors []error
+	chromedp.ListenTarget(ctx, func(ev interface{}) {
+		switch ev := ev.(type) {
+		case *fetch.EventRequestPaused:
+			go func(ev *fetch.EventRequestPaused) {
+				requestURL = append(requestURL, ev.Request.URL)
+				r := fetch.ContinueRequest(ev.RequestID)
+				if err := r.Do(GetExecutor(ctx)); err != nil {
+					errors = append(errors, err)
+				}
+			}(ev)
+		}
+	})
 
 	var filebyte []byte
 	var html string
-	if err := cdp.Run(ctx, cdp.Tasks{
-		cdp.Navigate(url),
-		cdp.Sleep(3 * time.Second),
-		cdp.CaptureScreenshot(&filebyte),
-		cdp.ActionFunc(func(ctx context.Context) error {
+	if err := chromedp.Run(ctx, chromedp.Tasks{
+		fetch.Enable(),
+		chromedp.Navigate(url),
+		chromedp.Sleep(3 * time.Second),
+		chromedp.CaptureScreenshot(&filebyte),
+		chromedp.ActionFunc(func(ctx context.Context) error {
 			node, err := dom.GetDocument().Do(ctx)
 			if err != nil {
 				return err
@@ -35,9 +61,10 @@ func GetHTMLandSS(_ctx context.Context, url string) (CDPRes, error) {
 			return err
 		}),
 	}); err != nil {
-		return CDPRes{}, err
+		errors = append(errors, err)
+		return chromedpRes{}, errors
 	}
-	return CDPRes{HTML: html, Shot: filebyte}, nil
+	return chromedpRes{HTML: html, Shot: filebyte, requestURL: requestURL}, nil
 }
 
 func init() {
@@ -49,12 +76,11 @@ func init() {
 func main() {
 	fmt.Println("start")
 	url := "https://google.com"
-	ctx, cancel := cdp.NewContext(context.Background())
-	defer cancel()
+	// url := "http://localhost:8080"
 
-	res, err := GetHTMLandSS(ctx, url)
-	if err != nil {
-		panic(err)
+	res, errors := GetHTMLandSS(url)
+	if len(errors) > 0 {
+		panic(errors)
 	}
 
 	pngFile, err := os.Create("./out/shot.png")
@@ -65,9 +91,6 @@ func main() {
 
 	pngFile.Write(res.Shot)
 	fmt.Println("screen shot tacked!")
-
-	for {
-		time.Sleep(1 * time.Second)
-		fmt.Println("waiting...")
-	}
+	fmt.Printf("HTML len: %d\n", len(res.HTML))
+	fmt.Printf("requestURL: %s\n", res.requestURL)
 }
