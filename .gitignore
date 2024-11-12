@@ -28,5 +28,5 @@ go.work
 tmp
 db
 app/app
-mover/mover
+screenshot/ss
 out/
