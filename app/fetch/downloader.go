@@ -16,17 +16,19 @@ type Downloader struct {
 	base    *url.URL
 	links   []string
 	html    string
+	shot    []byte
 	SaveDir string
 }
 
-func NewDownloader(url *url.URL, html string, resourcesLinks []string) *Downloader {
+func NewDownloader(url *url.URL, resourcesLinks []string, html string, shot []byte) *Downloader {
 	d := Downloader{}
 	saveDir := d.url2dirname(url)
 	return &Downloader{
 		base:    url,
 		links:   resourcesLinks,
 		html:    html,
-		SaveDir: d.removeTrailingSlash(saveDir),
+		shot:    shot,
+		SaveDir: d.rmTrailingSlash(saveDir),
 	}
 }
 
@@ -42,22 +44,38 @@ func (d *Downloader) url2dirname(_url *url.URL) string {
 	return u
 }
 
-func (d *Downloader) DownloadFiles() {
-	if !config.Configs.FetchContents.Html && !config.Configs.FetchContents.CssJsOther {
-		return
+func (d *Downloader) DownloadFiles() error {
+	fc := config.Configs.FetchContents
+	if !fc.Html && !fc.CssJsOther && !fc.ScreenShot {
+		return nil
 	}
 
-	downloadDir := filepath.Join("out", d.SaveDir, "contents")
-	if _, err := os.Stat(d.SaveDir); os.IsNotExist(err) {
-		os.MkdirAll(downloadDir, os.ModePerm)
+	downloadDir := filepath.Join("out", d.SaveDir)
+	contentDir := filepath.Join(downloadDir, "contents")
+	if fc.CssJsOther {
+		if _, err := os.Stat(d.SaveDir); os.IsNotExist(err) {
+			os.MkdirAll(contentDir, os.ModePerm)
+		}
+	} else if fc.Html || fc.ScreenShot {
+		if _, err := os.Stat(downloadDir); os.IsNotExist(err) {
+			os.MkdirAll(downloadDir, os.ModePerm)
+		}
 	}
 
-	if config.Configs.FetchContents.Html {
-		d.SaveHTML(downloadDir)
+	if fc.Html {
+		if err := d.SaveHTML(downloadDir); err != nil {
+			return err
+		}
 	}
 
-	if !config.Configs.FetchContents.CssJsOther {
-		return
+	if fc.ScreenShot {
+		if err := d.SaveSS(downloadDir); err != nil {
+			return err
+		}
+	}
+
+	if !fc.CssJsOther {
+		return nil
 	}
 
 	for _, link := range d.links {
@@ -70,7 +88,7 @@ func (d *Downloader) DownloadFiles() {
 		if !(u.Scheme == "http" || u.Scheme == "https") {
 			link = d.base.ResolveReference(u).String()
 		}
-		filePath := filepath.Join(downloadDir, u.RequestURI())
+		filePath := filepath.Join(contentDir, u.RequestURI())
 		filePath = filepath.Clean(filePath)
 
 		err = d.download(filePath, link)
@@ -78,9 +96,10 @@ func (d *Downloader) DownloadFiles() {
 			fmt.Println(err)
 		}
 	}
+	return nil
 }
 
-func (d *Downloader) removeTrailingSlash(s string) string {
+func (d *Downloader) rmTrailingSlash(s string) string {
 	if strings.HasSuffix(s, "/") {
 		return s[:len(s)-1]
 	}
@@ -101,6 +120,7 @@ func (d *Downloader) download(filePath string, url string) error {
 	}
 
 	out, err := os.Create(filePath)
+	defer out.Close()
 	if err != nil {
 		return err
 	}
@@ -110,11 +130,24 @@ func (d *Downloader) download(filePath string, url string) error {
 	return err
 }
 
-func (d *Downloader) SaveHTML(downloadDir string) {
+func (d *Downloader) SaveHTML(downloadDir string) error {
 	htmlPath := filepath.Join(downloadDir, "index.html")
 	out, err := os.Create(htmlPath)
+	defer out.Close()
 	if err != nil {
-		fmt.Println(err)
+		return err
 	}
 	out.Write([]byte(d.html))
+	return nil
+}
+
+func (d *Downloader) SaveSS(downloadDir string) error {
+	htmlPath := filepath.Join(downloadDir, "screenshot.png")
+	out, err := os.Create(htmlPath)
+	defer out.Close()
+	if err != nil {
+		return err
+	}
+	out.Write(d.shot)
+	return nil
 }

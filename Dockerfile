@@ -1,6 +1,10 @@
 FROM chromedp/headless-shell:132.0.6793.2
 WORKDIR /app
-RUN apk update && apk add make curl wget
+RUN apt update \
+    && apt install -y make curl wget \
+    && apt install -y fonts-noto \
+    && apt install -y fonts-noto-cjk \
+    && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/
 
 # Install go:1.23.2
 RUN wget https://dl.google.com/go/go1.23.2.linux-amd64.tar.gz

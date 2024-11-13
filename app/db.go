@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"math/rand"
+	"os"
 	"strings"
 
 	"gorm.io/driver/postgres"

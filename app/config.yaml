@@ -9,8 +9,8 @@ duplicate: same-domain
 # 取得する内容の設定
 fetch_contents:
   html: true
-  screenshot: false
-  css_js_other: false
+  screenshot: true
+  css_js_other: true
 
 # 初期データの設定
 seed_file: seed.txt

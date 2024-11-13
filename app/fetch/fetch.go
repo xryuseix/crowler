@@ -2,12 +2,11 @@ package fetch
 
 import (
 	"fmt"
-	"io"
 	"log"
-	"net/http"
 	"net/url"
 	"strings"
 
+	"xryuseix/crawler/app/chromedp"
 	"xryuseix/crawler/app/lib"
 
 	"github.com/PuerkitoBio/goquery"
@@ -19,8 +18,8 @@ type ExternalUrl struct {
 }
 
 type Parser struct {
-	url  *url.URL
-	HTML string
+	url *url.URL
+	CDP *chromedp.ChromeDP
 	// aタグで移動することができるリンク
 	Links []string
 	// 画像やスクリプトなどのリソースリンク
@@ -33,33 +32,25 @@ type Parser struct {
 func NewParser(url *url.URL) *Parser {
 	return &Parser{
 		url:           url,
-		HTML:          "",
+		CDP:           chromedp.NewChromeDP(url),
 		Links:         make([]string, 0),
 		ResourceLinks: make([]string, 0),
 		ExternalUrls:  make([]ExternalUrl, 0),
 	}
 }
 
-func (p *Parser) GetWebPage(url *url.URL) error {
-	resp, err := http.Get(url.String())
-	if err != nil {
+func (p *Parser) GetWebPage() error {
+	if err := p.CDP.GetHTMLAndSS(); err != nil {
 		return err
 	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-	p.HTML = string(body)
 	return nil
 }
 
 func (p *Parser) Parse() error {
-	if p.HTML == "" {
+	if p.CDP.HTML == "" {
 		return fmt.Errorf("HTML is empty")
 	}
-	doc, err := goquery.NewDocumentFromReader(strings.NewReader(p.HTML))
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(p.CDP.HTML))
 	if err != nil {
 		return err
 	}

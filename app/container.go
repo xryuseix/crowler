@@ -65,7 +65,7 @@ func (c *Container) Fetch(_url string) (Visited, []*Queue, error) {
 	fmt.Printf("[%d] fetching %s\n", c.id, url.String())
 
 	p := fetch.NewParser(url)
-	if err := p.GetWebPage(url); err != nil {
+	if err := p.GetWebPage(); err != nil {
 		fmt.Println(err)
 		time.Sleep(time.Second)
 		return Visited{}, []*Queue{}, err
@@ -75,9 +75,9 @@ func (c *Container) Fetch(_url string) (Visited, []*Queue, error) {
 		time.Sleep(time.Second)
 		return Visited{}, []*Queue{}, err
 	}
-	p.HTML = p.ReplaceInternalDomains(p.HTML)
+	p.CDP.HTML = p.ReplaceInternalDomains(p.CDP.HTML)
 
-	d := fetch.NewDownloader(url, p.HTML, p.ResourceLinks)
+	d := fetch.NewDownloader(url, p.ResourceLinks, p.CDP.HTML, p.CDP.Shot)
 	d.DownloadFiles()
 
 	queues := make([]*Queue, 0, len(p.Links))
@@ -124,8 +124,4 @@ func (c *Container) DeQueueingURL() (Queue, error) {
 
 func (c *Container) InsertFetchResultToDB(v Visited) {
 	c.db.Create(&v)
-}
-
-func (c *Container) Save() {
-	return
 }
