@@ -27,11 +27,18 @@ func GetExecutor(ctx context.Context) context.Context {
 }
 
 func GetHTMLandSS(url string) (chromedpRes, []error) {
-	ctx, cancel := chromedp.NewContext(
-		context.Background(),
+	opts := append(chromedp.DefaultExecAllocatorOptions[:],
+        chromedp.DisableGPU,
+        chromedp.WindowSize(1920, 1080),
+    )
+	allocCtx, cancel1 := chromedp.NewExecAllocator(context.Background(), opts...)
+	ctx, cancel2 := chromedp.NewContext(
+		allocCtx,
 		// chromedp.WithDebugf(log.Printf),
 	)
-	defer cancel()
+	for _, cancel := range []context.CancelFunc{cancel1, cancel2} {
+        defer cancel()
+    }
 
 	var requestURL []string
 	var errors []error
