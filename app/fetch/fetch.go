@@ -6,8 +6,8 @@ import (
 	"net/url"
 	"strings"
 
-	"xryuseix/crawler/app/chromedp"
-	"xryuseix/crawler/app/lib"
+	"xryuseix/crowler/app/chromedp"
+	"xryuseix/crowler/app/lib"
 
 	"github.com/PuerkitoBio/goquery"
 )

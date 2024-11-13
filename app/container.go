@@ -5,7 +5,7 @@ import (
 	"net/url"
 	"time"
 
-	"xryuseix/crawler/app/fetch"
+	"xryuseix/crowler/app/fetch"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"

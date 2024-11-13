@@ -1,4 +1,4 @@
-module xryuseix/crawler/app
+module xryuseix/crowler/app
 
 go 1.23.2
 

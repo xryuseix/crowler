@@ -10,7 +10,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 
-	"xryuseix/crawler/app/config"
+	"xryuseix/crowler/app/config"
 )
 
 type Queue struct {

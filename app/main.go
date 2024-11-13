@@ -6,7 +6,7 @@ import (
 	"os/signal"
 	"sync"
 
-	"xryuseix/crawler/app/config"
+	"xryuseix/crowler/app/config"
 )
 
 type ContainerMngr struct {

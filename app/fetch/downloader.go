@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"xryuseix/crawler/app/config"
+	"xryuseix/crowler/app/config"
 )
 
 type Downloader struct {

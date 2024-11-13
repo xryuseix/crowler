@@ -1,4 +1,4 @@
-module xryuseix/crawler/ss
+module xryuseix/crowler/ss
 
 go 1.23.2
 
