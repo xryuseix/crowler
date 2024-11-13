@@ -6,9 +6,12 @@ import (
 	"os"
 	"time"
 
+	"golang.org/x/exp/slices"
+
 	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/dom"
 	"github.com/chromedp/cdproto/fetch"
+	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/chromedp"
 )
 
@@ -32,10 +35,14 @@ func GetHTMLandSS(url string) (chromedpRes, []error) {
 
 	var requestURL []string
 	var errors []error
+	var capList = []network.ResourceType{"Document", "Stylesheet", "Image", "Media", "Font", "Script"}
 	chromedp.ListenTarget(ctx, func(ev interface{}) {
 		switch ev := ev.(type) {
 		case *fetch.EventRequestPaused:
 			go func(ev *fetch.EventRequestPaused) {
+				if !slices.Contains(capList, ev.ResourceType) {
+					return
+				}
 				requestURL = append(requestURL, ev.Request.URL)
 				r := fetch.ContinueRequest(ev.RequestID)
 				if err := r.Do(GetExecutor(ctx)); err != nil {
@@ -75,8 +82,8 @@ func init() {
 
 func main() {
 	fmt.Println("start")
-	url := "https://google.com"
-	// url := "http://localhost:8080"
+	// url := "https://google.com"
+	url := "http://localhost:8080"
 
 	res, errors := GetHTMLandSS(url)
 	if len(errors) > 0 {

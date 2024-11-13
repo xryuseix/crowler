@@ -6,9 +6,12 @@ import (
 	"net/url"
 	"time"
 
+	"golang.org/x/exp/slices"
+
 	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/dom"
 	"github.com/chromedp/cdproto/fetch"
+	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/chromedp"
 )
 
@@ -38,11 +41,14 @@ func (c *ChromeDP) GetHTMLAndSS() error {
 	defer cancel()
 
 	var errors []error
+	var capList = []network.ResourceType{"Document", "Stylesheet", "Image", "Media", "Font", "Script"}
 	chromedp.ListenTarget(ctx, func(ev interface{}) {
 		switch ev := ev.(type) {
 		case *fetch.EventRequestPaused:
-			// TODO: POST requestなどがこれに含まれるか確認
 			go func(ev *fetch.EventRequestPaused) {
+				if !slices.Contains(capList, ev.ResourceType) {
+					return
+				}
 				c.RequestURL = append(c.RequestURL, ev.Request.URL)
 				r := fetch.ContinueRequest(ev.RequestID)
 				if err := r.Do(c.getExecutor(ctx)); err != nil {
