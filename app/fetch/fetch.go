@@ -20,7 +20,7 @@ type ExternalUrl struct {
 type Parser struct {
 	url *url.URL
 	CDP *chromedp.ChromeDP
-	// aタグで移動することができるリンク
+	// aタグで移動することができるリンク(絶対パス)
 	Links []string
 	// 画像やスクリプトなどのリソースリンク
 	ResourceLinks []string
@@ -87,6 +87,7 @@ func (p *Parser) Parse() error {
 	resourcesLinks = lib.SplitBySpace(resourcesLinks)
 	anchorLinks = lib.Filter(lib.Filter(anchorLinks, notNull), notDataSchema)
 	anchorLinks = lib.SplitBySpace(anchorLinks)
+	anchorLinks = lib.ToAbsoluteLink(p.url, anchorLinks)
 
 	f := func(links []string) ([]string, []ExternalUrl) {
 		l := []string{}

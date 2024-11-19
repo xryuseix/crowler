@@ -99,6 +99,9 @@ func (c *Container) Fetch(_url string) (Visited, []*Queue, error) {
 
 func (c *Container) QueueingURL(q []*Queue) {
 	// INSERT INTO queues (url) VALUES ('https://example.com');
+	if len(q) == 0 {
+		return
+	}
 	c.db.Create(&q)
 }
 

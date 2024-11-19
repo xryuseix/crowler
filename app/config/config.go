@@ -12,6 +12,11 @@ type FetchContent struct {
 	ScreenShot bool `yaml:"screenshot"`
 }
 
+type Timeout struct {
+	Navigate int `yaml:"navigate"`
+	Fetch    int `yaml:"fetch"`
+}
+
 type Config struct {
 	ThreadMax     int          `yaml:"thread_max"`
 	Duplicate     string       `yaml:"duplicate"`
@@ -19,6 +24,7 @@ type Config struct {
 	SeedFile      string       `yaml:"seed_file"`
 	RandomSeed    bool         `yaml:"random_seed"`
 	OutputDir     string       `yaml:"output_dir"`
+	Timeout       Timeout      `yaml:"timeout"`
 }
 
 type Env struct {

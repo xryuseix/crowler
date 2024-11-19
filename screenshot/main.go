@@ -16,7 +16,6 @@ import (
 	"github.com/chromedp/cdproto/fetch"
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/cdproto/page"
-	"github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/chromedp"
 )
 
@@ -115,16 +114,6 @@ Loop:
 	var filebyte []byte
 	var html string
 	if err := chromedp.Run(ctx, chromedp.Tasks{
-		chromedp.ActionFunc(func(ctx context.Context) error {
-			_, exp, err := runtime.Evaluate(`window.scrollTo(0,document.body.scrollHeight);`).Do(ctx)
-			if err != nil {
-				return err
-			}
-			if exp != nil {
-				return exp
-			}
-			return nil
-		}),
 		chromedp.ActionFunc(func(ctx context.Context) error {
 			// get layout metrics
 			_, _, contentSize, _, _, _, err := page.GetLayoutMetrics().Do(ctx)

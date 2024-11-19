@@ -1,5 +1,5 @@
 # 同時に取得するWorkerの設定
-thread_max: 3
+thread_max: 1
 
 # 開かないサイトの設定
 ## same-url...同じURLは二度と開かない
@@ -18,3 +18,9 @@ random_seed: false
 
 # 出力先の設定
 output_dir: out
+
+timeout:
+  # ページの読み込みに対するタイムアウト
+  navigate: 60
+  # ページ内のコンテンツ取得に対するタイムアウト
+  fetch: 5

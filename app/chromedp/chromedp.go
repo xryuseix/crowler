@@ -4,14 +4,14 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"sync"
 	"time"
+	"xryuseix/crowler/app/config"
 
-	"golang.org/x/exp/slices"
-
-	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/dom"
+	"github.com/chromedp/cdproto/emulation"
 	"github.com/chromedp/cdproto/fetch"
-	"github.com/chromedp/cdproto/network"
+	"github.com/chromedp/cdproto/page"
 	"github.com/chromedp/chromedp"
 )
 
@@ -28,49 +28,87 @@ func NewChromeDP(url *url.URL) *ChromeDP {
 	}
 }
 
-func (c *ChromeDP) getExecutor(_ctx context.Context) context.Context {
-	ctx := chromedp.FromContext(_ctx)
-	return cdp.WithExecutor(_ctx, ctx.Target)
-}
-
 func (c *ChromeDP) GetHTMLAndSS() error {
-	opts := append(chromedp.DefaultExecAllocatorOptions[:],
-        chromedp.DisableGPU,
-        chromedp.WindowSize(1920, 1080),
-    )
+	opts := append(
+		chromedp.DefaultExecAllocatorOptions[:],
+		chromedp.Flag("disable-cache", true),
+		chromedp.WindowSize(1920, 1080),
+		// chromedp.Flag("headless", false),
+	)
 	allocCtx, cancel1 := chromedp.NewExecAllocator(context.Background(), opts...)
 	ctx, cancel2 := chromedp.NewContext(
 		allocCtx,
 		// chromedp.WithDebugf(log.Printf),
 	)
 	for _, cancel := range []context.CancelFunc{cancel1, cancel2} {
-        defer cancel()
-    }
+		defer cancel()
+	}
 
+	r := sync.Map{}
+	loaded := make(chan bool)
 	var errors []error
-	var capList = []network.ResourceType{"Document", "Stylesheet", "Image", "Media", "Font", "Script"}
-	chromedp.ListenTarget(ctx, func(ev interface{}) {
-		switch ev := ev.(type) {
-		case *fetch.EventRequestPaused:
-			go func(ev *fetch.EventRequestPaused) {
-				if !slices.Contains(capList, ev.ResourceType) {
-					return
-				}
-				c.RequestURL = append(c.RequestURL, ev.Request.URL)
-				r := fetch.ContinueRequest(ev.RequestID)
-				if err := r.Do(c.getExecutor(ctx)); err != nil {
-					errors = append(errors, err)
-				}
-			}(ev)
-		}
-	})
 
-	var filebyte []byte
+	c.Listen(ctx, loaded, &r, &errors)
+
 	if err := chromedp.Run(ctx, chromedp.Tasks{
 		fetch.Enable(),
 		chromedp.Navigate(c.url.String()),
-		chromedp.Sleep(3 * time.Second),
-		chromedp.CaptureScreenshot(&filebyte),
+	}); err != nil {
+		return err
+	}
+
+	<-loaded
+	timeout := time.After(time.Duration(config.Configs.Timeout.Fetch) * time.Second)
+	tick := time.Tick(100 * time.Millisecond)
+Loop:
+	for {
+		select {
+		case <-timeout:
+			break Loop
+		case <-tick:
+			isEmpty := true
+			r.Range(func(key, value interface{}) bool {
+				isEmpty = false
+				return false
+			})
+			if isEmpty {
+				break Loop
+			}
+		}
+	}
+
+	if err := chromedp.Run(ctx, chromedp.Tasks{
+		chromedp.ActionFunc(func(ctx context.Context) error {
+			// get layout metrics
+			_, _, contentSize, _, _, _, err := page.GetLayoutMetrics().Do(ctx)
+			if err != nil {
+				return err
+			}
+
+			width, height := contentSize.Width, contentSize.Height
+
+			// force viewport emulation
+			err = emulation.SetDeviceMetricsOverride(int64(width), int64(height), 1, false).
+				WithScreenOrientation(&emulation.ScreenOrientation{
+					Type:  emulation.OrientationTypePortraitPrimary,
+					Angle: 0,
+				}).Do(ctx)
+
+			if err != nil {
+				return err
+			}
+
+			// capture screenshot without clipping
+			var quality int64 = 90
+			c.Shot, err = page.CaptureScreenshot().
+				WithQuality(quality).
+				Do(ctx)
+
+			if err != nil {
+				return err
+			}
+			return nil
+		}),
 		chromedp.ActionFunc(func(ctx context.Context) error {
 			node, err := dom.GetDocument().Do(ctx)
 			if err != nil {
@@ -82,7 +120,6 @@ func (c *ChromeDP) GetHTMLAndSS() error {
 	}); err != nil {
 		return err
 	}
-	c.Shot = filebyte
 	if len(errors) != 0 {
 		return fmt.Errorf("errors: %v", errors)
 	}
