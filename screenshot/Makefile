@@ -1,16 +1,10 @@
-default: build
+default: run
 
 run:
 	go run .
-
-test:
-	go test ./...
-
-build:
-	go build .
 
 fmt:
 	gofmt -l -s -w .
 
 clean:
-	rm -rf ss
+	rm -rf out/shot.png
