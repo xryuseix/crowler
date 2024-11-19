@@ -34,6 +34,7 @@ func GetHTMLandSS(url string) (chromedpRes, []error) {
 		chromedp.DefaultExecAllocatorOptions[:],
 		// chromedp.Flag("headless", false),
 		chromedp.Flag("disable-cache", true),
+		chromedp.WindowSize(1920, 1080),
 	)
 	allocCtx, cancel1 := chromedp.NewExecAllocator(context.Background(), opts...)
 	ctx, cancel2 := chromedp.NewContext(
@@ -140,7 +141,7 @@ func init() {
 func main() {
 	fmt.Println("start")
 	// url := "https://google.com"
-	url := "http://127.0.0.1:5000"
+	url := "http://example:80"
 
 	res, errors := GetHTMLandSS(url)
 	if len(errors) > 0 {

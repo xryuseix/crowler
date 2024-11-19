@@ -1,0 +1,16 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/app
+    restart: always
+  example:
+    image: python:3.12.3-alpine3.18
+    volumes:
+      - ../example:/app
+    ports:
+      - "5678:80"
+    command: ["python", "-m", "http.server", "80", "--directory", "/app"]
+    restart: always
