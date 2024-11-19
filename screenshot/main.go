@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+
 	// "log"
 	"os"
 	"time"
@@ -11,9 +12,11 @@ import (
 
 	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/dom"
+	"github.com/chromedp/cdproto/emulation"
 	"github.com/chromedp/cdproto/fetch"
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/cdproto/page"
+	"github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/chromedp"
 )
 
@@ -41,7 +44,8 @@ func GetHTMLandSS(url string) (chromedpRes, []error) {
 		allocCtx,
 		// chromedp.WithDebugf(log.Printf),
 	)
-	for _, cancel := range []context.CancelFunc{cancel1, cancel2} {
+	ctx, cancel3 := context.WithTimeout(ctx, 15*time.Second)
+	for _, cancel := range []context.CancelFunc{cancel1, cancel2, cancel3} {
 		defer cancel()
 	}
 
@@ -111,8 +115,47 @@ Loop:
 	var filebyte []byte
 	var html string
 	if err := chromedp.Run(ctx, chromedp.Tasks{
-		// TODO: ScrollIntoView
-		chromedp.CaptureScreenshot(&filebyte),
+		chromedp.ActionFunc(func(ctx context.Context) error {
+			_, exp, err := runtime.Evaluate(`window.scrollTo(0,document.body.scrollHeight);`).Do(ctx)
+			if err != nil {
+				return err
+			}
+			if exp != nil {
+				return exp
+			}
+			return nil
+		}),
+		chromedp.ActionFunc(func(ctx context.Context) error {
+			// get layout metrics
+			_, _, contentSize, _, _, _, err := page.GetLayoutMetrics().Do(ctx)
+			if err != nil {
+				return err
+			}
+		
+			width, height := contentSize.Width, contentSize.Height
+		
+			// force viewport emulation
+			err = emulation.SetDeviceMetricsOverride(int64(width), int64(height), 1, false).
+				WithScreenOrientation(&emulation.ScreenOrientation{
+					Type:  emulation.OrientationTypePortraitPrimary,
+					Angle: 0,
+				}).Do(ctx)
+		
+			if err != nil {
+				return err
+			}
+		
+			// capture screenshot without clipping
+			var quality int64 = 90
+			filebyte, err = page.CaptureScreenshot().
+				WithQuality(quality).
+				Do(ctx)
+		
+			if err != nil {
+				return err
+			}
+			return nil
+		}),
 		chromedp.ActionFunc(func(ctx context.Context) error {
 			node, err := dom.GetDocument().Do(ctx)
 			if err != nil {
@@ -130,9 +173,9 @@ Loop:
 }
 
 func init() {
-	if _, err := os.Stat("./out"); !os.IsNotExist(err) {
-		os.RemoveAll("./out")
-	}
+	// if _, err := os.Stat("./out"); !os.IsNotExist(err) {
+	// 	os.RemoveAll("./out")
+	// }
 	if _, err := os.Stat("./out"); os.IsNotExist(err) {
 		os.Mkdir("./out", os.ModePerm)
 	}
