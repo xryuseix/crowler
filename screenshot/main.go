@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
+	// "log"
 	"os"
 	"time"
 
@@ -32,13 +32,13 @@ func GetHTMLandSS(url string) (chromedpRes, []error) {
 	// TODO: with timeout https://github.com/chromedp/chromedp/issues/1009
 	opts := append(
 		chromedp.DefaultExecAllocatorOptions[:],
-		chromedp.Flag("headless", false),
+		// chromedp.Flag("headless", false),
 		chromedp.Flag("disable-cache", true),
 	)
 	allocCtx, cancel1 := chromedp.NewExecAllocator(context.Background(), opts...)
 	ctx, cancel2 := chromedp.NewContext(
 		allocCtx,
-		chromedp.WithDebugf(log.Printf),
+		// chromedp.WithDebugf(log.Printf),
 	)
 	for _, cancel := range []context.CancelFunc{cancel1, cancel2} {
 		defer cancel()
@@ -48,6 +48,7 @@ func GetHTMLandSS(url string) (chromedpRes, []error) {
 	var errors []error
 	var skipList = []network.ResourceType{"Fetch", "XHR"}
 	var capList = []network.ResourceType{"Document", "Stylesheet", "Image", "Media", "Font", "Script"}
+	requesting := map[network.RequestID]bool{}
 	ch := make(chan bool)
 	chromedp.ListenTarget(ctx, func(ev interface{}) {
 		switch ev := ev.(type) {
@@ -70,6 +71,16 @@ func GetHTMLandSS(url string) (chromedpRes, []error) {
 			go func() {
 				ch <- true
 			}()
+		case *network.EventRequestWillBeSent:
+			go func(ev *network.EventRequestWillBeSent) {
+				requesting[ev.RequestID] = true
+			}(ev)
+		case *network.EventResponseReceived:
+			go func(ev *network.EventResponseReceived) {
+				if _, ok := requesting[ev.RequestID]; ok {
+					delete(requesting, ev.RequestID)
+				}
+			}(ev)
 		}
 	})
 
@@ -82,6 +93,19 @@ func GetHTMLandSS(url string) (chromedpRes, []error) {
 	}
 
 	<-ch
+	timeout := time.After(3 * time.Second)
+	tick := time.Tick(500 * time.Millisecond)
+Loop:
+	for {
+		select {
+		case <-timeout:
+			break Loop
+		case <-tick:
+			if len(requesting) == 0 {
+				break Loop
+			}
+		}
+	}
 
 	var filebyte []byte
 	var html string
