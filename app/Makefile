@@ -19,4 +19,10 @@ gen:
 	go generate ./...
 
 clean:
-	rm -rf app out/* ../db/*
+	{ \
+		read -p "ok? (y/N): " yn; \
+		case "$$yn" in \
+		[yY]*) rm -rf app out/* ../db/*;; \
+		*) echo "abort";; \
+		esac; \
+	}

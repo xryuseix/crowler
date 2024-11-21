@@ -1,9 +1,13 @@
 # 同時に取得するWorkerの設定
 thread_max: 1
 
+# 次のクロールまでの待ち時間の設定
+wait_time: 1
+
 # 開かないサイトの設定
 ## same-url...同じURLは二度と開かない
 ## same-domain...同じドメインのサイトは二度と開かない
+## none...開かないサイトの設定をしない
 duplicate: same-domain
 
 # 取得する内容の設定
@@ -19,6 +23,7 @@ random_seed: false
 # 出力先の設定
 output_dir: out
 
+# タイムアウトの設定
 timeout:
   # ページの読み込みに対するタイムアウト
   navigate: 60

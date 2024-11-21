@@ -2,10 +2,13 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/url"
 	"time"
 
+	"xryuseix/crowler/app/config"
 	"xryuseix/crowler/app/fetch"
+	"xryuseix/crowler/app/lib"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -31,22 +34,28 @@ func (c *Container) Start() error {
 		if !c.running {
 			return nil
 		}
-		time.Sleep(2 * time.Second)
+		time.Sleep(time.Duration(config.Configs.WaitTime) * time.Second)
 		fmt.Printf("[%d] running...\n", c.id)
 		q, err := c.DeQueueingURL()
 		if err != nil {
-			fmt.Println(err)
+			log.Fatal(err)
 			continue
 		}
 
 		v, nq, err := c.Fetch(q.URL)
 		if err != nil {
-			fmt.Println(err)
+			log.Fatal(err)
 			continue
 		}
 
-		c.InsertFetchResultToDB(v)
-		c.QueueingURL(nq)
+		if err := c.InsertFetchResultToDB(v); err != nil {
+			log.Fatal(err)
+			continue
+		}
+		if err := c.QueueingURL(nq); err != nil {
+			log.Fatal(err)
+			continue
+		}
 	}
 }
 
@@ -58,7 +67,7 @@ func (c *Container) Stop() {
 func (c *Container) Fetch(_url string) (Visited, []*Queue, error) {
 	url, err := url.Parse(_url)
 	if err != nil {
-		fmt.Println(err)
+		log.Fatal(err)
 		return Visited{}, []*Queue{}, err
 	}
 
@@ -66,12 +75,12 @@ func (c *Container) Fetch(_url string) (Visited, []*Queue, error) {
 
 	p := fetch.NewParser(url)
 	if err := p.GetWebPage(); err != nil {
-		fmt.Println(err)
+		log.Fatal(err)
 		time.Sleep(time.Second)
 		return Visited{}, []*Queue{}, err
 	}
 	if err := p.Parse(); err != nil {
-		fmt.Println(err)
+		log.Fatal(err)
 		time.Sleep(time.Second)
 		return Visited{}, []*Queue{}, err
 	}
@@ -97,12 +106,58 @@ func (c *Container) Fetch(_url string) (Visited, []*Queue, error) {
 	return v, queues, nil
 }
 
-func (c *Container) QueueingURL(q []*Queue) {
+func (c *Container) QueueingURL(queues []*Queue) error {
 	// INSERT INTO queues (url) VALUES ('https://example.com');
-	if len(q) == 0 {
-		return
+	// WHERE {duplicate config}
+	if len(queues) == 0 {
+		return nil
 	}
-	c.db.Create(&q)
+
+	queues = lib.Unique(queues)
+
+	var dupq []Queue
+	if config.Configs.Duplicate == "same-url" {
+		urls := make([]string, len(queues))
+		for i, q := range queues {
+			urls[i] = q.URL
+		}
+		if err := c.db.Where("url IN (?)", urls).Find(&dupq).Error; err != nil {
+			return err
+		}
+	} else if config.Configs.Duplicate == "same-domain" {
+		urls := make([]string, len(queues))
+		for i, q := range queues {
+			u, err := url.Parse(q.URL)
+			if err != nil {
+				log.Fatal(err)
+				continue
+			}
+			urls[i] = u.Host
+		}
+		if err := c.db.Where("domain IN (?)", urls).Find(&dupq).Error; err != nil {
+			return err
+		}
+	} else {
+		dupq = []Queue{}
+	}
+
+	dupu := make(map[string]bool, len(dupq))
+	for _, queue := range dupq {
+		dupu[queue.URL] = true
+	}
+
+	var validq []Queue
+	for _, q := range queues {
+		if _, ok := dupu[q.URL]; ok {
+			continue
+		}
+		validq = append(validq, *q)
+	}
+
+	if err := c.db.Create(&validq).Error; err != nil {
+		return err
+	}
+	return nil
 }
 
 func (c *Container) DeQueueingURL() (Queue, error) {
@@ -125,6 +180,9 @@ func (c *Container) DeQueueingURL() (Queue, error) {
 	return queue, nil
 }
 
-func (c *Container) InsertFetchResultToDB(v Visited) {
-	c.db.Create(&v)
+func (c *Container) InsertFetchResultToDB(v Visited) error {
+	if err := c.db.Create(&v).Error; err != nil {
+		return err
+	}
+	return nil
 }

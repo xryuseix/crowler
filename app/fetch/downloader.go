@@ -3,6 +3,7 @@ package fetch
 import (
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -81,7 +82,7 @@ func (d *Downloader) DownloadFiles() error {
 	for _, link := range d.links {
 		u, err := url.Parse(link)
 		if err != nil {
-			fmt.Println(err)
+			log.Fatal(err)
 			continue
 		}
 
@@ -93,7 +94,7 @@ func (d *Downloader) DownloadFiles() error {
 
 		err = d.download(filePath, link)
 		if err != nil {
-			fmt.Println(err)
+			log.Fatal(err)
 		}
 	}
 	return nil
@@ -112,6 +113,10 @@ func (d *Downloader) download(filePath string, url string) error {
 		return err
 	}
 	defer resp.Body.Close()
+
+	if len(filePath) > 255 {
+		return fmt.Errorf("File path is too long: %s", filePath)
+	}
 
 	fmt.Printf("Downloading %s -> %s\n", url, filePath)
 	dir := filepath.Dir(filePath)

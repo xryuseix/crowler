@@ -19,6 +19,7 @@ type Timeout struct {
 
 type Config struct {
 	ThreadMax     int          `yaml:"thread_max"`
+	WaitTime      int          `yaml:"wait_time"`
 	Duplicate     string       `yaml:"duplicate"`
 	FetchContents FetchContent `yaml:"fetch_contents"`
 	SeedFile      string       `yaml:"seed_file"`
@@ -46,6 +47,9 @@ func LoadConf(path string) error {
 	err = yaml.Unmarshal(yml, &Configs)
 	if err != nil {
 		return err
+	}
+	if Configs.Duplicate != "same-url" && Configs.Duplicate != "same-domain" && Configs.Duplicate != "none" {
+		panic("duplicate must be same-url or same-domain")
 	}
 
 	Envs = &Env{
