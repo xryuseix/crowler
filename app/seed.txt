@@ -1,3 +1,2 @@
-https://www.google.com/search?q=%E3%81%84
-https://www.google.com/search?q=%E3%81%85
-https://www.google.com/search?q=%E3%81%86
+https://www.google.com/search?q=foo
+https://search.yahoo.co.jp/search?p=bar

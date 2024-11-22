@@ -7,7 +7,6 @@ services:
       - ./app:/app
     env_file:
       - .env
-    restart: always
     depends_on:
       db:
         condition: service_healthy

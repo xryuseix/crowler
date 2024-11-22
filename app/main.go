@@ -34,32 +34,45 @@ func main() {
 	}
 
 	var wg sync.WaitGroup
+	wgDone := make(chan bool)
+	go func() {
+		wg.Wait()
+		wgDone <- true
+	}()
+	defer close(wgDone)
+
 	cm := &ContainerMngr{
 		containers: make([]*Container, 0, config.Configs.ThreadMax),
 	}
 
 	for i := 0; i < config.Configs.ThreadMax; i++ {
 		wg.Add(1)
-		go func() {
+		go func(i int) {
 			c := NewContainer(i, db)
 			cm.mu.Lock()
 			cm.containers = append(cm.containers, c)
 			cm.mu.Unlock()
 			c.Start()
-		}()
+			wg.Done()
+		}(i)
 	}
 
 	quit := make(chan os.Signal, 1)
+	defer close(quit)
 	signal.Notify(quit, os.Interrupt)
-	<-quit
 
-	for _, c := range cm.containers {
-		go func(c *Container) {
-			fmt.Printf("[%d] stopping...\n", c.id)
-			defer wg.Done()
-			c.Stop()
-		}(c)
+	for {
+		select {
+		case <-quit:
+			cm.mu.Lock()
+			for _, c := range cm.containers {
+				fmt.Printf("[%d] stopping...\n", c.id)
+				c.Stop()
+			}
+			cm.mu.Unlock()
+		case <-wgDone:
+			fmt.Println("INFO: all containers stopped")
+			return
+		}
 	}
-
-	wg.Wait()
 }

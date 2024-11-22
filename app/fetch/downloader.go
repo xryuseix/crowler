@@ -123,7 +123,7 @@ func (d *Downloader) download(filePath string, url string) error {
 		return fmt.Errorf("File path is too long: %s", filePath)
 	}
 
-	fmt.Printf("Downloading %s -> %s\n", url, filePath)
+	fmt.Printf("Downloading %s... -> %s...\n", url[:min(len(url), 64)], filePath[:min(len(filePath), 64)])
 	dir := filepath.Dir(filePath)
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
 		os.MkdirAll(dir, os.ModePerm)

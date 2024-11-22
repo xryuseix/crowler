@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 
 	// "log"
 	"os"
@@ -120,26 +121,26 @@ Loop:
 			if err != nil {
 				return err
 			}
-		
+
 			width, height := contentSize.Width, contentSize.Height
-		
+
 			// force viewport emulation
 			err = emulation.SetDeviceMetricsOverride(int64(width), int64(height), 1, false).
 				WithScreenOrientation(&emulation.ScreenOrientation{
 					Type:  emulation.OrientationTypePortraitPrimary,
 					Angle: 0,
 				}).Do(ctx)
-		
+
 			if err != nil {
 				return err
 			}
-		
+
 			// capture screenshot without clipping
 			var quality int64 = 90
 			filebyte, err = page.CaptureScreenshot().
 				WithQuality(quality).
 				Do(ctx)
-		
+
 			if err != nil {
 				return err
 			}
@@ -178,13 +179,13 @@ func main() {
 	res, errors := GetHTMLandSS(url)
 	if len(errors) > 0 {
 		fmt.Println(errors)
-		panic(errors)
+		log.Fatal(errors)
 	}
 
 	pngFile, err := os.Create("./out/shot.png")
 	defer pngFile.Close()
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
 	pngFile.Write(res.Shot)
@@ -195,7 +196,7 @@ func main() {
 	out, err := os.Create("./out/index.html")
 	defer out.Close()
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	out.Write([]byte(res.HTML))
 }
