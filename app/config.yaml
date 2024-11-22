@@ -2,7 +2,7 @@
 thread_max: 1
 
 # 次のクロールまでの待ち時間の設定
-wait_time: 1
+wait_time: 0.5
 
 # 開かないサイトの設定
 ## same-url...同じURLは二度と開かない
@@ -26,9 +26,9 @@ output_dir: out
 # タイムアウトの設定
 timeout:
   # ページの読み込みに対するタイムアウト
-  navigate: 60
+  navigate: 30
   # ページ内のコンテンツ取得に対するタイムアウト
   fetch: 5
 
 # seedデータから幅優先探索で閲覧する深さの最大値
-hops: 1
+hops: 3

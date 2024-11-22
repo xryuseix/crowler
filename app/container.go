@@ -142,7 +142,7 @@ func (c *Container) QueueingURL(queues []*Queue) error {
 		for _, vv := range v {
 			vmap[vv.URL] = true
 		}
-		var validq []Queue
+
 		for _, q := range queues {
 			if _, ok := vmap[q.URL]; ok {
 				continue
@@ -179,7 +179,6 @@ func (c *Container) QueueingURL(queues []*Queue) error {
 			dupmap[v.URL] = true
 		}
 
-		var validq []Queue
 		for _, q := range queues {
 			if _, ok := dupmap[q.URL]; ok {
 				continue
