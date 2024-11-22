@@ -29,31 +29,38 @@ func NewContainer(id int, db *gorm.DB) *Container {
 	}
 }
 
-func (c *Container) Start() error {
+func (c *Container) Start() {
 	for {
 		if !c.running {
-			return nil
+			return
 		}
 		time.Sleep(time.Duration(config.Configs.WaitTime) * time.Second)
 		fmt.Printf("[%d] running...\n", c.id)
 		q, err := c.DeQueueingURL()
 		if err != nil {
-			log.Fatal(err)
+			log.Print(err)
+			c.running = false
+			continue
+		}
+		if q.Hops > config.Configs.Hops {
 			continue
 		}
 
 		v, nq, err := c.Fetch(q.URL)
 		if err != nil {
-			log.Fatal(err)
+			log.Print(err)
 			continue
+		}
+		for i := range nq {
+			nq[i].Hops = q.Hops + 1
 		}
 
 		if err := c.InsertFetchResultToDB(v); err != nil {
-			log.Fatal(err)
+			log.Print(err)
 			continue
 		}
 		if err := c.QueueingURL(nq); err != nil {
-			log.Fatal(err)
+			log.Print(err)
 			continue
 		}
 	}
@@ -67,7 +74,7 @@ func (c *Container) Stop() {
 func (c *Container) Fetch(_url string) (Visited, []*Queue, error) {
 	url, err := url.Parse(_url)
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
 		return Visited{}, []*Queue{}, err
 	}
 
@@ -75,12 +82,12 @@ func (c *Container) Fetch(_url string) (Visited, []*Queue, error) {
 
 	p := fetch.NewParser(url)
 	if err := p.GetWebPage(); err != nil {
-		log.Fatal(err)
+		log.Print(err)
 		time.Sleep(time.Second)
 		return Visited{}, []*Queue{}, err
 	}
 	if err := p.Parse(); err != nil {
-		log.Fatal(err)
+		log.Print(err)
 		time.Sleep(time.Second)
 		return Visited{}, []*Queue{}, err
 	}
@@ -93,7 +100,7 @@ func (c *Container) Fetch(_url string) (Visited, []*Queue, error) {
 	for _, link := range p.Links {
 		u, err := url.Parse(link)
 		if err != nil {
-			log.Fatal(err)
+			log.Print(err)
 			continue
 		}
 		queues = append(queues, &Queue{
@@ -147,7 +154,7 @@ func (c *Container) QueueingURL(queues []*Queue) error {
 		for i, q := range queues {
 			u, err := url.Parse(q.URL)
 			if err != nil {
-				log.Fatal(err)
+				log.Print(err)
 				continue
 			}
 			hosts[i] = u.Host

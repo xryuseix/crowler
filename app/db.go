@@ -19,12 +19,14 @@ type Queue struct {
 	Id     int    `gorm:"primaryKey;autoIncrement;not null"`
 	URL    string `gorm:"unique;not null"`
 	Domain string `gorm:"not null"`
+	Hops   int    `gorm:"default:0"`
 }
 
 type Visited struct {
 	URL     string `gorm:"primaryKey;unique;not null"`
 	Domain  string `gorm:"not null"`
 	SaveDir string `gorm:"not null"`
+	Hops    int    `gorm:"not null"`
 }
 
 func CreateDB() (*gorm.DB, error) {
@@ -67,7 +69,7 @@ func InsertSeed(db *gorm.DB) {
 	var q []*Queue = make([]*Queue, 0)
 	b, err := os.ReadFile(config.Configs.SeedFile)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	lines := strings.Split(string(b), "\n")
 	for _, line := range lines {
@@ -76,7 +78,7 @@ func InsertSeed(db *gorm.DB) {
 		}
 		u, err := url.Parse(line)
 		if err != nil {
-			log.Fatal(err)
+			log.Print(err)
 		}
 		q = append(q, &Queue{
 			URL:    u.String(),
@@ -92,7 +94,7 @@ func InsertRandomSeed(db *gorm.DB) {
 	for i := 0; i < n; i++ {
 		u, err := url.Parse(fmt.Sprintf("https://www.google.com/search?q=%d", rand.Intn(100)))
 		if err != nil {
-			panic(err)
+			log.Fatal(err)
 		}
 		q = append(q, &Queue{
 			URL:    u.String(),

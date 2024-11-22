@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"os/signal"
 	"sync"
@@ -16,14 +17,14 @@ type ContainerMngr struct {
 
 func init() {
 	if err := config.LoadConf("config.yaml"); err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 }
 
 func main() {
 	db, err := BuildDB()
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	if config.Configs.SeedFile != "" {
 		InsertSeed(db)

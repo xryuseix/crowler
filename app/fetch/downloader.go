@@ -82,7 +82,7 @@ func (d *Downloader) DownloadFiles() error {
 	for _, link := range d.links {
 		u, err := url.Parse(link.from)
 		if err != nil {
-			log.Fatal(err)
+			log.Print(err)
 			continue
 		}
 
@@ -99,7 +99,7 @@ func (d *Downloader) DownloadFiles() error {
 
 		err = d.download(filePath, link.from)
 		if err != nil {
-			log.Fatal(err)
+			log.Print(err)
 		}
 	}
 	return nil

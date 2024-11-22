@@ -106,7 +106,7 @@ func (p *Parser) Parse() error {
 			if strings.HasPrefix(link, "http://") || strings.HasPrefix(link, "https://") {
 				u, err := url.Parse(link)
 				if err != nil {
-					log.Fatal(err)
+					log.Print(err)
 					continue
 				}
 				eu = append(eu, ExternalUrl{

@@ -1,31 +1,34 @@
 package config
 
 import (
+	"log"
 	"os"
 
+	"github.com/creasty/defaults"
 	"gopkg.in/yaml.v3"
 )
 
 type FetchContent struct {
-	Html       bool `yaml:"html"`
-	CssJsOther bool `yaml:"css_js_other"`
-	ScreenShot bool `yaml:"screenshot"`
+	Html       bool `yaml:"html" default:"true"`
+	CssJsOther bool `yaml:"css_js_other" default:"false"`
+	ScreenShot bool `yaml:"screenshot" default:"false"`
 }
 
 type Timeout struct {
-	Navigate int `yaml:"navigate"`
-	Fetch    int `yaml:"fetch"`
+	Navigate int `yaml:"navigate" default:"60"`
+	Fetch    int `yaml:"fetch" default:"5"`
 }
 
 type Config struct {
-	ThreadMax     int          `yaml:"thread_max"`
-	WaitTime      int          `yaml:"wait_time"`
-	Duplicate     string       `yaml:"duplicate"`
+	ThreadMax     int          `yaml:"thread_max" default:"1"`
+	WaitTime      int          `yaml:"wait_time" default:"1"`
+	Duplicate     string       `yaml:"duplicate" default:"same-domain"`
 	FetchContents FetchContent `yaml:"fetch_contents"`
-	SeedFile      string       `yaml:"seed_file"`
-	RandomSeed    bool         `yaml:"random_seed"`
-	OutputDir     string       `yaml:"output_dir"`
+	SeedFile      string       `yaml:"seed_file" default:""`
+	RandomSeed    bool         `yaml:"random_seed" default:"false"`
+	OutputDir     string       `yaml:"output_dir" default:"out"`
 	Timeout       Timeout      `yaml:"timeout"`
+	Hops          int          `yaml:"hops" default:"2"`
 }
 
 type Env struct {
@@ -39,6 +42,17 @@ type Env struct {
 var Configs *Config
 var Envs *Env
 
+func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	defaults.Set(c)
+
+	type plain Config
+	if err := unmarshal((*plain)(c)); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func LoadConf(path string) error {
 	yml, err := os.ReadFile(path)
 	if err != nil {
@@ -49,7 +63,7 @@ func LoadConf(path string) error {
 		return err
 	}
 	if Configs.Duplicate != "same-url" && Configs.Duplicate != "same-domain" && Configs.Duplicate != "none" {
-		panic("duplicate must be same-url or same-domain")
+		log.Fatal("duplicate must be same-url or same-domain")
 	}
 
 	Envs = &Env{
