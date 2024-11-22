@@ -13,6 +13,7 @@ import (
 	"gorm.io/gorm/logger"
 
 	"xryuseix/crowler/app/config"
+	"xryuseix/crowler/app/lib"
 )
 
 type Queue struct {
@@ -66,24 +67,45 @@ func InsertSeed(db *gorm.DB) {
 	if config.Configs.SeedFile == "" {
 		return
 	}
-	var q []*Queue = make([]*Queue, 0)
 	b, err := os.ReadFile(config.Configs.SeedFile)
 	if err != nil {
 		log.Fatal(err)
 	}
-	lines := strings.Split(string(b), "\n")
-	for _, line := range lines {
-		if line == "" {
-			continue
-		}
-		u, err := url.Parse(line)
+	lines := lib.Unique(strings.Split(string(b), "\n"))
+	lines = lib.Filter(lines, func(s string) bool { return s != "" })
+
+	var urls []*url.URL
+	var dupMap = make(map[string]bool)
+	dup := config.Configs.Duplicate
+	for _, s := range lines {
+		u, err := url.Parse(s)
 		if err != nil {
 			log.Print(err)
+			continue
 		}
-		q = append(q, &Queue{
+		if dup == "same-url" {
+			if _, ok := dupMap[u.String()]; ok {
+				continue
+			}
+			dupMap[u.String()] = true
+			urls = append(urls, u)
+		} else if dup == "same-domain" {
+			if _, ok := dupMap[u.Host]; ok {
+				continue
+			}
+			dupMap[u.Host] = true
+			urls = append(urls, u)
+		} else {
+			urls = append(urls, u)
+		}
+	}
+
+	var q []*Queue = make([]*Queue, len(urls))
+	for i, u := range urls {
+		q[i] = &Queue{
 			URL:    u.String(),
 			Domain: u.Host,
-		})
+		}
 	}
 	db.Create(&q)
 }
