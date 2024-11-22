@@ -33,6 +33,7 @@ require (
 require (
 	github.com/andybalholm/cascadia v1.3.2 // indirect
 	github.com/chromedp/chromedp v0.11.2
+	github.com/google/uuid v1.6.0
 	golang.org/x/exp v0.0.0-20241108190413-2d47ceb2692f
 	golang.org/x/net v0.29.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1

@@ -84,15 +84,21 @@ func (c *Container) Fetch(_url string) (Visited, []*Queue, error) {
 		time.Sleep(time.Second)
 		return Visited{}, []*Queue{}, err
 	}
-	p.CDP.HTML = p.ReplaceInternalDomains(p.CDP.HTML)
+	p.CDP.HTML = p.ReplaceUrls(p.CDP.HTML)
 
 	d := fetch.NewDownloader(url, p.ResourceLinks, p.CDP.HTML, p.CDP.Shot)
 	d.DownloadFiles()
 
 	queues := make([]*Queue, 0, len(p.Links))
 	for _, link := range p.Links {
+		u, err := url.Parse(link)
+		if err != nil {
+			log.Fatal(err)
+			continue
+		}
 		queues = append(queues, &Queue{
-			URL: link,
+			URL:    u.String(),
+			Domain: u.Host,
 		})
 	}
 
@@ -115,45 +121,70 @@ func (c *Container) QueueingURL(queues []*Queue) error {
 
 	queues = lib.Unique(queues)
 
-	var dupq []Queue
+	var validq []Queue
 	if config.Configs.Duplicate == "same-url" {
 		urls := make([]string, len(queues))
 		for i, q := range queues {
 			urls[i] = q.URL
 		}
-		if err := c.db.Where("url IN (?)", urls).Find(&dupq).Error; err != nil {
+		var v []Visited
+		if err := c.db.Where("url IN (?)", urls).Find(&v).Error; err != nil {
 			return err
 		}
+		vmap := make(map[string]bool, len(v))
+		for _, vv := range v {
+			vmap[vv.URL] = true
+		}
+		var validq []Queue
+		for _, q := range queues {
+			if _, ok := vmap[q.URL]; ok {
+				continue
+			}
+			validq = append(validq, *q)
+		}
 	} else if config.Configs.Duplicate == "same-domain" {
-		urls := make([]string, len(queues))
+		hosts := make([]string, len(queues))
 		for i, q := range queues {
 			u, err := url.Parse(q.URL)
 			if err != nil {
 				log.Fatal(err)
 				continue
 			}
-			urls[i] = u.Host
+			hosts[i] = u.Host
 		}
-		if err := c.db.Where("domain IN (?)", urls).Find(&dupq).Error; err != nil {
+		hosts = lib.Unique(hosts)
+
+		dupmap := make(map[string]bool)
+
+		var dupq []Queue
+		if err := c.db.Where("domain IN (?)", hosts).Find(&dupq).Error; err != nil {
 			return err
 		}
-	} else {
-		dupq = []Queue{}
-	}
-
-	dupu := make(map[string]bool, len(dupq))
-	for _, queue := range dupq {
-		dupu[queue.URL] = true
-	}
-
-	var validq []Queue
-	for _, q := range queues {
-		if _, ok := dupu[q.URL]; ok {
-			continue
+		for _, q := range dupq {
+			dupmap[q.URL] = true
 		}
-		validq = append(validq, *q)
-	}
 
+		var dupv []Visited
+		if err := c.db.Where("domain IN (?)", hosts).Find(&dupv).Error; err != nil {
+			return err
+		}
+		for _, v := range dupv {
+			dupmap[v.URL] = true
+		}
+
+		var validq []Queue
+		for _, q := range queues {
+			if _, ok := dupmap[q.URL]; ok {
+				continue
+			}
+			validq = append(validq, *q)
+		}
+	} else {
+		validq = make([]Queue, len(queues))
+		for i, q := range queues {
+			validq[i] = *q
+		}
+	}
 	if err := c.db.Create(&validq).Error; err != nil {
 		return err
 	}

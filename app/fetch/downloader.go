@@ -15,13 +15,13 @@ import (
 
 type Downloader struct {
 	base    *url.URL
-	links   []string
+	links   []ResourceLink
 	html    string
 	shot    []byte
 	SaveDir string
 }
 
-func NewDownloader(url *url.URL, resourcesLinks []string, html string, shot []byte) *Downloader {
+func NewDownloader(url *url.URL, resourcesLinks []ResourceLink, html string, shot []byte) *Downloader {
 	d := Downloader{}
 	saveDir := d.url2dirname(url)
 	return &Downloader{
@@ -80,19 +80,24 @@ func (d *Downloader) DownloadFiles() error {
 	}
 
 	for _, link := range d.links {
-		u, err := url.Parse(link)
+		u, err := url.Parse(link.from)
 		if err != nil {
 			log.Fatal(err)
 			continue
 		}
 
+		var filePath string
 		if !(u.Scheme == "http" || u.Scheme == "https") {
-			link = d.base.ResolveReference(u).String()
+			link.from = d.base.ResolveReference(u).String()
 		}
-		filePath := filepath.Join(contentDir, u.RequestURI())
+		if link.from != link.to {
+			filePath = filepath.Join(contentDir, link.to)
+		} else {
+			filePath = filepath.Join(contentDir, u.RequestURI())
+		}
 		filePath = filepath.Clean(filePath)
 
-		err = d.download(filePath, link)
+		err = d.download(filePath, link.from)
 		if err != nil {
 			log.Fatal(err)
 		}

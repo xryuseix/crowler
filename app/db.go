@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"math/rand"
+	"net/url"
 	"os"
 	"strings"
 
@@ -14,8 +16,9 @@ import (
 )
 
 type Queue struct {
-	Id  int    `gorm:"primaryKey;autoIncrement;not null"`
-	URL string `gorm:"unique;not null"`
+	Id     int    `gorm:"primaryKey;autoIncrement;not null"`
+	URL    string `gorm:"unique;not null"`
+	Domain string `gorm:"not null"`
 }
 
 type Visited struct {
@@ -71,7 +74,14 @@ func InsertSeed(db *gorm.DB) {
 		if line == "" {
 			continue
 		}
-		q = append(q, &Queue{URL: line})
+		u, err := url.Parse(line)
+		if err != nil {
+			log.Fatal(err)
+		}
+		q = append(q, &Queue{
+			URL:    u.String(),
+			Domain: u.Host,
+		})
 	}
 	db.Create(&q)
 }
@@ -80,8 +90,13 @@ func InsertRandomSeed(db *gorm.DB) {
 	n := config.Configs.ThreadMax * 2
 	var q []*Queue = make([]*Queue, 0, n)
 	for i := 0; i < n; i++ {
+		u, err := url.Parse(fmt.Sprintf("https://www.google.com/search?q=%d", rand.Intn(100)))
+		if err != nil {
+			panic(err)
+		}
 		q = append(q, &Queue{
-			URL: fmt.Sprintf("https://www.google.com/search?q=%d", rand.Intn(100)),
+			URL:    u.String(),
+			Domain: u.Host,
 		})
 	}
 	db.Create(&q)

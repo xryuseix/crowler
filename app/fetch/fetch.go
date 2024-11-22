@@ -10,9 +10,15 @@ import (
 	"xryuseix/crowler/app/lib"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/google/uuid"
 )
 
 type ExternalUrl struct {
+	from string
+	to   string
+}
+
+type ResourceLink struct {
 	from string
 	to   string
 }
@@ -23,10 +29,12 @@ type Parser struct {
 	// aタグで移動することができるリンク(絶対パス)
 	Links []string
 	// 画像やスクリプトなどのリソースリンク
-	ResourceLinks []string
+	ResourceLinks []ResourceLink
 	// リソースリンクのうち、内部リンクを除いたもの
 	// 外部リンクは内部リンクに変換する
 	ExternalUrls []ExternalUrl
+	// 文字数が長いリソースパスを短縮したものを格納するディレクトリ
+	TmpDir string
 }
 
 func NewParser(url *url.URL) *Parser {
@@ -34,8 +42,9 @@ func NewParser(url *url.URL) *Parser {
 		url:           url,
 		CDP:           chromedp.NewChromeDP(url),
 		Links:         make([]string, 0),
-		ResourceLinks: make([]string, 0),
+		ResourceLinks: make([]ResourceLink, 0),
 		ExternalUrls:  make([]ExternalUrl, 0),
+		TmpDir:        fmt.Sprintf("%s", uuid.New().String()),
 	}
 }
 
@@ -110,10 +119,9 @@ func (p *Parser) Parse() error {
 	}
 
 	rlinks, reurl := f(resourcesLinks)
-	p.ResourceLinks = append(p.ResourceLinks, rlinks...)
-	p.ExternalUrls = append(p.ExternalUrls, reurl...)
-
 	p.Links = append(p.Links, anchorLinks...)
+	p.ResourceLinks = p.ReplaceLongLink(rlinks)
+	p.ExternalUrls = append(p.ExternalUrls, reurl...)
 
 	p.Links = lib.Unique(p.Links)
 	p.ResourceLinks = lib.Unique(p.ResourceLinks)
@@ -122,9 +130,30 @@ func (p *Parser) Parse() error {
 	return nil
 }
 
-func (p *Parser) ReplaceInternalDomains(html string) string {
+func (p *Parser) ReplaceUrls(html string) string {
 	for _, domain := range p.ExternalUrls {
 		html = strings.ReplaceAll(html, domain.from, domain.to)
 	}
+	for _, link := range p.ResourceLinks {
+		html = strings.ReplaceAll(html, link.from, link.to)
+	}
 	return html
+}
+
+func (p *Parser) ReplaceLongLink(links []string) []ResourceLink {
+	r := []ResourceLink{}
+	for _, link := range links {
+		if len(link) > 255 {
+			r = append(r, ResourceLink{
+				from: link,
+				to:   fmt.Sprintf("/%s/%s", p.TmpDir, uuid.New().String()),
+			})
+			continue
+		}
+		r = append(r, ResourceLink{
+			from: link,
+			to:   link,
+		})
+	}
+	return r
 }
