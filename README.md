@@ -2,6 +2,26 @@
 
 **_A Generic Docker-based Web Crawler that can be used to crawl any website and extract data from it._**
 
+<div align="center">
+  <img src="./demo.gif" alt="Demo" />
+</div>
+
+## Output
+
+Related files are also saved so that web pages can be restored.
+
+```txt
+out/example.com
+├── index.html     // main page of the website(external links are replaced with local links)
+├── index.old.html // original main page of the website
+├── contents
+│   ├── 0fae3c61-a154-4283-9216-fc2f63093f1b // js, css, and other files
+│   ├── 2a854bf8-238a-4081-9ed4-98291b2682f6 // js, css, and other files
+│   ├── ...
+├── screenshot.png // screenshot of the website
+└── url_table.json // external links and their corresponding local links
+```
+
 ## How to use
 
 ### 1. Edit the `config.yaml` file
