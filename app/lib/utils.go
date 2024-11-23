@@ -50,7 +50,7 @@ func ToAbsoluteLink(base *url.URL, link string) string {
 	if strings.HasPrefix(link, "http") || strings.HasPrefix(link, "https") {
 		return link
 	} else if strings.HasPrefix(link, "//") {
-		return "https:"+link
+		return "https:" + link
 	} else if strings.HasPrefix(link, "/") {
 		return base.ResolveReference(&url.URL{Path: link}).String()
 	}

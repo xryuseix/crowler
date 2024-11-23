@@ -8,18 +8,18 @@ import (
 )
 
 type FileManager struct {
-	HTML  string
+	HTML    string
 	OldHtml string
-	links []ResourceLink
-	Table map[string]string
+	links   []ResourceLink
+	Table   map[string]string
 }
 
 func NewFileManager(html string, links []ResourceLink) *FileManager {
 	return &FileManager{
-		HTML:  html,
+		HTML:    html,
 		OldHtml: html,
-		links: links,
-		Table: make(map[string]string),
+		links:   links,
+		Table:   make(map[string]string),
 	}
 }
 

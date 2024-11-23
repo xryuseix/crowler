@@ -149,6 +149,7 @@ func (c *Container) QueueingURL(queues []*Queue) error {
 			validq = append(validq, *q)
 		}
 	} else if config.Configs.Duplicate == "same-domain" {
+		queues = c.UniqueDomain(queues)
 		hosts := make([]string, len(queues))
 		for i, q := range queues {
 			u, err := url.Parse(q.URL)
@@ -179,7 +180,7 @@ func (c *Container) QueueingURL(queues []*Queue) error {
 		}
 
 		for _, q := range queues {
-			if _, ok := dupmap[q.URL]; ok {
+			if _, ok := dupmap[q.Domain]; ok {
 				continue
 			}
 			validq = append(validq, *q)
@@ -194,6 +195,19 @@ func (c *Container) QueueingURL(queues []*Queue) error {
 		return err
 	}
 	return nil
+}
+
+func (c *Container) UniqueDomain(q []*Queue) []*Queue {
+	vsm := make(map[string]struct{})
+	r := make([]*Queue, 0)
+	for _, qq := range q {
+		if _, ok := vsm[qq.Domain]; ok {
+			continue
+		}
+		vsm[qq.Domain] = struct{}{}
+		r = append(r, qq)
+	}
+	return r
 }
 
 func (c *Container) DeQueueingURL() (Queue, error) {
