@@ -14,22 +14,18 @@ import (
 )
 
 type Downloader struct {
-	base    *url.URL
-	links   []ResourceLink
-	html    string
 	shot    []byte
+	fm      *FileManager
 	SaveDir string
 }
 
-func NewDownloader(url *url.URL, resourcesLinks []ResourceLink, html string, shot []byte) *Downloader {
+func NewDownloader(url *url.URL, shot []byte, fm *FileManager) *Downloader {
 	d := Downloader{}
 	saveDir := d.url2dirname(url)
 	return &Downloader{
-		base:    url,
-		links:   resourcesLinks,
-		html:    html,
 		shot:    shot,
-		SaveDir: d.rmTrailingSlash(saveDir),
+		fm:      fm,
+		SaveDir: saveDir,
 	}
 }
 
@@ -38,9 +34,12 @@ func (d *Downloader) url2dirname(_url *url.URL) string {
 	if _url.Path != "" {
 		u += url.QueryEscape(_url.Path)
 	}
-	MAX_PATH_LEN := 32
+	MAX_PATH_LEN := 255
 	if len(u) >= MAX_PATH_LEN {
 		u = u[:MAX_PATH_LEN]
+	}
+	if strings.HasSuffix(u, "/") {
+		return u[:len(u)-1]
 	}
 	return u
 }
@@ -79,51 +78,40 @@ func (d *Downloader) DownloadFiles() error {
 		return nil
 	}
 
-	for _, link := range d.links {
-		u, err := url.Parse(link.from)
+	for _, link := range d.fm.links {
+		var filePath string
+		if uuid, ok := d.fm.Table[link.Absolute]; ok {
+			filePath = filepath.Join(contentDir, uuid)
+		} else {
+			continue
+		}
+		filePath = filepath.Clean(filePath)
+		u, err := url.Parse(link.Absolute)
 		if err != nil {
 			log.Print(err)
 			continue
 		}
-
-		var filePath string
-		if !(u.Scheme == "http" || u.Scheme == "https") {
-			link.from = d.base.ResolveReference(u).String()
-		}
-		if link.from != link.to {
-			filePath = filepath.Join(contentDir, link.to)
-		} else {
-			filePath = filepath.Join(contentDir, u.RequestURI())
-		}
-		filePath = filepath.Clean(filePath)
-
-		err = d.download(filePath, link.from)
-		if err != nil {
+		if err := d.download(filePath, u); err != nil {
 			log.Print(err)
+			continue
 		}
 	}
 	return nil
 }
 
-func (d *Downloader) rmTrailingSlash(s string) string {
-	if strings.HasSuffix(s, "/") {
-		return s[:len(s)-1]
-	}
-	return s
-}
-
-func (d *Downloader) download(filePath string, url string) error {
-	resp, err := http.Get(url)
+func (d *Downloader) download(filePath string, url *url.URL) error {
+	resp, err := http.Get(url.String())
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
 
 	if len(filePath) > 255 {
-		return fmt.Errorf("File path is too long: %s", filePath)
+		return fmt.Errorf("error: File path is too long: %s", filePath)
 	}
 
-	fmt.Printf("Downloading %s... -> %s...\n", url[:min(len(url), 64)], filePath[:min(len(filePath), 64)])
+	u := url.String()
+	fmt.Printf("Downloading %s... -> %s...\n", u[:min(len(u), 64)], filePath[:min(len(filePath), 64)])
 	dir := filepath.Dir(filePath)
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
 		os.MkdirAll(dir, os.ModePerm)
@@ -142,12 +130,22 @@ func (d *Downloader) download(filePath string, url string) error {
 
 func (d *Downloader) SaveHTML(downloadDir string) error {
 	htmlPath := filepath.Join(downloadDir, "index.html")
-	out, err := os.Create(htmlPath)
-	defer out.Close()
-	if err != nil {
+	oldHtmlPath := filepath.Join(downloadDir, "index.old.html")
+	write := func(path string, html string) error {
+		out, err := os.Create(path)
+		defer out.Close()
+		if err != nil {
+			return err
+		}
+		out.Write([]byte(html))
+		return nil
+	}
+	if err := write(htmlPath, d.fm.HTML); err != nil {
 		return err
 	}
-	out.Write([]byte(d.html))
+	if err := write(oldHtmlPath, d.fm.OldHtml); err != nil {
+		return err
+	}
 	return nil
 }
 

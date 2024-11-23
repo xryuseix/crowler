@@ -35,16 +35,24 @@ func Unique[T comparable](vs []T) []T {
 	return r
 }
 
-func ToAbsoluteLink(base *url.URL, links []string) []string {
+func ToAbsoluteLinks(base *url.URL, links []string) []string {
 	r := []string{}
 	for _, link := range links {
-		if strings.HasPrefix(link, "//") {
-			r = append(r, "https:"+link)
-		} else if strings.HasPrefix(link, "/") {
-			r = append(r, base.ResolveReference(&url.URL{Path: link}).String())
-		} else {
-			r = append(r, link)
+		l := ToAbsoluteLink(base, link)
+		if l != "" {
+			r = append(r, l)
 		}
 	}
 	return r
+}
+
+func ToAbsoluteLink(base *url.URL, link string) string {
+	if strings.HasPrefix(link, "http") || strings.HasPrefix(link, "https") {
+		return link
+	} else if strings.HasPrefix(link, "//") {
+		return "https:"+link
+	} else if strings.HasPrefix(link, "/") {
+		return base.ResolveReference(&url.URL{Path: link}).String()
+	}
+	return ""
 }

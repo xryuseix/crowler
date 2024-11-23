@@ -83,17 +83,16 @@ func (c *Container) Fetch(_url string) (Visited, []*Queue, error) {
 	p := fetch.NewParser(url)
 	if err := p.GetWebPage(); err != nil {
 		log.Print(err)
-		time.Sleep(time.Second)
 		return Visited{}, []*Queue{}, err
 	}
 	if err := p.Parse(); err != nil {
 		log.Print(err)
-		time.Sleep(time.Second)
 		return Visited{}, []*Queue{}, err
 	}
-	p.CDP.HTML = p.ReplaceUrls(p.CDP.HTML)
+	fm := fetch.NewFileManager(p.CDP.HTML, p.ResourceLinks)
+	fm.ReplaceLinks()
 
-	d := fetch.NewDownloader(url, p.ResourceLinks, p.CDP.HTML, p.CDP.Shot)
+	d := fetch.NewDownloader(url, p.CDP.Shot, fm)
 	d.DownloadFiles()
 
 	queues := make([]*Queue, 0, len(p.Links))
@@ -168,7 +167,7 @@ func (c *Container) QueueingURL(queues []*Queue) error {
 			return err
 		}
 		for _, q := range dupq {
-			dupmap[q.URL] = true
+			dupmap[q.Domain] = true
 		}
 
 		var dupv []Visited
@@ -176,7 +175,7 @@ func (c *Container) QueueingURL(queues []*Queue) error {
 			return err
 		}
 		for _, v := range dupv {
-			dupmap[v.URL] = true
+			dupmap[v.Domain] = true
 		}
 
 		for _, q := range queues {

@@ -183,7 +183,7 @@ func TestToAbsoluteLink(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := ToAbsoluteLink(tt.base, tt.links)
+			result := ToAbsoluteLinks(tt.base, tt.links)
 			if !reflect.DeepEqual(result, tt.expected) {
 				t.Errorf("expected %v, got %v", tt.expected, result)
 			}
