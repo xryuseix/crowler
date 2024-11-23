@@ -1,2 +1,3 @@
 https://www.google.com/search?q=foo
 https://search.yahoo.co.jp/search?p=bar
+https://search.goo.ne.jp/web.jsp?MT=buz

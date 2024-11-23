@@ -50,21 +50,6 @@ func (p *Parser) Parse() error {
 		return err
 	}
 
-	var resourcesLinks []string
-	doc.Find("link").Each(func(i int, s *goquery.Selection) {
-		link, _ := s.Attr("href")
-		resourcesLinks = append(resourcesLinks, link)
-	})
-	doc.Find("img").Each(func(i int, s *goquery.Selection) {
-		src, _ := s.Attr("src")
-		srcset, _ := s.Attr("srcset")
-		resourcesLinks = append(resourcesLinks, src, srcset)
-	})
-	doc.Find("script").Each(func(i int, s *goquery.Selection) {
-		src, _ := s.Attr("src")
-		resourcesLinks = append(resourcesLinks, src)
-	})
-
 	var anchorLinks []string
 	doc.Find("a").Each(func(i int, s *goquery.Selection) {
 		link, _ := s.Attr("href")
@@ -84,7 +69,7 @@ func (p *Parser) Parse() error {
 		}
 		return true
 	}
-	resourcesLinks = lib.Filter(lib.Filter(resourcesLinks, notNull), inValidSchema)
+	resourcesLinks := lib.Filter(lib.Filter(p.CDP.RequestURL, notNull), inValidSchema)
 	resourcesLinks = lib.SplitBySpace(resourcesLinks)
 
 	anchorLinks = lib.Filter(lib.Filter(anchorLinks, notNull), inValidSchema)

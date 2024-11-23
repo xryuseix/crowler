@@ -1,6 +1,7 @@
 package fetch
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -34,7 +35,7 @@ func (d *Downloader) url2dirname(_url *url.URL) string {
 	if _url.Path != "" {
 		u += url.QueryEscape(_url.Path)
 	}
-	MAX_PATH_LEN := 255
+	MAX_PATH_LEN := 64
 	if len(u) >= MAX_PATH_LEN {
 		u = u[:MAX_PATH_LEN]
 	}
@@ -95,6 +96,10 @@ func (d *Downloader) DownloadFiles() error {
 			log.Print(err)
 			continue
 		}
+	}
+
+	if err := d.SaveTable(downloadDir); err != nil {
+		return err
 	}
 	return nil
 }
@@ -157,5 +162,20 @@ func (d *Downloader) SaveSS(downloadDir string) error {
 		return err
 	}
 	out.Write(d.shot)
+	return nil
+}
+
+func (d *Downloader) SaveTable(downloadDir string) error {
+	tablePath := filepath.Join(downloadDir, "url_table.json")
+	out, err := os.Create(tablePath)
+	defer out.Close()
+	if err != nil {
+		return err
+	}
+	tableJson, err := json.Marshal(d.fm.Table)
+	if err != nil {
+		return err
+	}
+	out.Write(tableJson)
 	return nil
 }
