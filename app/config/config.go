@@ -3,6 +3,7 @@ package config
 import (
 	"log"
 	"os"
+	"runtime"
 
 	"github.com/creasty/defaults"
 	"gopkg.in/yaml.v3"
@@ -28,7 +29,7 @@ type Config struct {
 	RandomSeed    bool         `yaml:"random_seed" default:"false"`
 	OutputDir     string       `yaml:"output_dir" default:"out"`
 	Timeout       Timeout      `yaml:"timeout"`
-	Hops          int          `yaml:"hops" default:"2"`
+	Hops          int          `yaml:"hops" default:"-1"`
 }
 
 type Env struct {
@@ -64,6 +65,10 @@ func LoadConf(path string) error {
 	}
 	if Configs.Duplicate != "same-url" && Configs.Duplicate != "same-domain" && Configs.Duplicate != "none" {
 		log.Fatal("duplicate must be same-url or same-domain")
+	}
+
+	if Configs.ThreadMax < 0 {
+		Configs.ThreadMax = runtime.NumCPU()
 	}
 
 	Envs = &Env{

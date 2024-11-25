@@ -32,7 +32,8 @@ example:
 
 ```yaml
 # 同時に取得するWorkerの設定
-thread_max: 3
+# -1にするとruntime.NumCPU()の値が設定される
+thread_max: -1
 
 # 次のクロールまでの待ち時間の設定
 wait_time: 0.5
@@ -82,5 +83,5 @@ https://search.goo.ne.jp/web.jsp?MT=buz
 ### 3. Run
 
 ```bash
-docker-compose up
+docker-compose up -d
 ```
