@@ -27,7 +27,7 @@ go.work
 # End of https://www.toptal.com/developers/gitignore/api/go
 tmp
 db
-app/app
-screenshot/ss
 out/
 chrome-user-data
+online-valid.json
+seed.txt
