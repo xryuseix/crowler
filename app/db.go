@@ -78,6 +78,7 @@ func InsertSeed(db *gorm.DB) {
 	var dupMap = make(map[string]bool)
 	dup := config.Configs.Duplicate
 	for _, s := range lines {
+		s = SliceLongerStr(s)
 		u, err := url.Parse(s)
 		if err != nil {
 			log.Print(err)
@@ -124,4 +125,13 @@ func InsertRandomSeed(db *gorm.DB) {
 		})
 	}
 	db.Create(&q)
+}
+
+func SliceLongerStr(s string) string {
+	// NOTE: https://stackoverflow.com/questions/70123567/index-row-size-2712-exceeds-btree-version-4-maximum-2704-for-index-while-doing
+	if len(s) > 1000 {
+		log.Printf("URL is too long: %s", s[0:min(100, len(s))])
+		s = s[0:min(1000, len(s))]
+	}
+	return s
 }

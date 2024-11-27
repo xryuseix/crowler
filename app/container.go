@@ -126,6 +126,9 @@ func (c *Container) QueueingURL(queues []*Queue) error {
 	}
 
 	queues = lib.Unique(queues)
+	for i, q := range queues {
+		queues[i].URL = SliceLongerStr(q.URL)
+	}
 
 	var validq []Queue
 	if config.Configs.Duplicate == "same-url" {
