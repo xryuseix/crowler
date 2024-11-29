@@ -13,15 +13,6 @@ import (
 	"time"
 )
 
-const (
-	serverUser   = ""
-	serverIP     = ""
-	identityFile = ""
-	remotePath   = ""
-	localPath    = "./out"
-	maxWorkers   = 4
-)
-
 type dirInfo struct {
 	name string
 	done bool
@@ -83,7 +74,8 @@ func downloadDirectory(name string, current int) {
 }
 
 func init() {
-	if err := exec.Command("mkdir", "-p", localPath).Run(); err != nil {
+	LoadEnv()
+	if err := exec.Command("mkdir", "-p", env.LocalPath).Run(); err != nil {
 		log.Fatalf("Failed to create the local directory: %v\n", err)
 	}
 }
@@ -105,7 +97,7 @@ func main() {
 
 	go getDirectories(wg, dirChan, sigChan)
 
-	sem := make(chan bool, min(maxWorkers, runtime.NumCPU())) // semaphore
+	sem := make(chan bool, min(env.MaxWorkers, runtime.NumCPU())) // semaphore
 	for info := range dirChan {
 		if !info.done {
 			sem <- true
