@@ -6,9 +6,9 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"path/filepath"
 	"runtime"
 	"strings"
-
 	"sync"
 	"time"
 )
@@ -18,15 +18,21 @@ type dirInfo struct {
 	done bool
 }
 
-func getDirectories(wg *sync.WaitGroup, dirChan chan dirInfo, sigChan chan os.Signal) {
-	defer wg.Done()
-	cmdString := fmt.Sprintf("ssh -i %s %s@%s ls -l %s | grep '^d' | awk '{print $9}' | tr '\n' ' '", env.IdentityPath, env.ServerUser, env.ServerIP, env.RemotePath)
-	cmd := exec.Command("/bin/sh", "-c", cmdString)
+func execRemoteCommand(_cmd string) string {
+	sshCmd := fmt.Sprintf("ssh -i %s %s@%s %s", env.IdentityPath, env.ServerUser, env.ServerIP, _cmd)
+	cmd := exec.Command("/bin/sh", "-c", sshCmd)
 
 	output, err := cmd.Output()
 	if err != nil {
 		log.Fatalf("[ERROR] Failed to list directories: %v\n", err)
 	}
+	return string(output)
+}
+
+func getDirectories(wg *sync.WaitGroup, dirChan chan dirInfo, sigChan chan os.Signal) {
+	defer wg.Done()
+	cmd := fmt.Sprintf("ls -l %s | grep '^d' | awk '{print $9}' | tr '\n' ' '", env.RemotePath)
+	output := execRemoteCommand(cmd)
 
 	dirs := strings.Split(strings.Trim(string(output), " "), " ")
 	log.Printf("[INFO] Found %d directories\n", len(dirs))
@@ -35,7 +41,7 @@ L:
 	for _, dir := range dirs {
 		select {
 		case <-sigChan:
-			log.Println("[INFO] Ctrl+C received, stopping...")
+			log.Println("[INFO] Ctrl+C received, will be stopping...")
 			break L
 		default:
 			dirChan <- dirInfo{name: dir, done: false}
@@ -44,33 +50,13 @@ L:
 	close(dirChan)
 }
 
-// func downloadDirectory(name string) {
-//     tarCmdStr := fmt.Sprintf("tar czf %s.tar.gz -C %s %s", name, outDir, name)
-//     tarCmd := exec.Command("/bin/sh", "-c", tarCmdStr)
-//     err := tarCmd.Run()
-//     if err != nil {
-//         log.Printf("Failed to create tarball for directory %s: %v\n", name, err)
-//         return
-//     }
-
-//     scpCmdStr := fmt.Sprintf("scp -i %s %s@%s:%s.tar.gz .", identityFile, serverUser, serverIP, name)
-//     scpCmd := exec.Command("/bin/sh", "-c", scpCmdStr)
-//     err = scpCmd.Run()
-//     if err != nil {
-//         log.Printf("Failed to download tarball for directory %s: %v\n", name, err)
-//         return
-//     }
-
-//     fmt.Printf("Downloaded directory: %s\n", name)
-// }
-
 func downloadDirectory(name string, current int) {
-	log.Printf("[%d] Downloading directory(1/3): %s\n", current, name)
-	time.Sleep(1 * time.Second)
-	log.Printf("[%d] Downloading directory(2/3): %s\n", current, name)
-	time.Sleep(1 * time.Second)
-	log.Printf("[%d] Downloading directory(3/3): %s\n", current, name)
-	time.Sleep(1 * time.Second)
+	fmt.Printf("[%d] Downloading directory: %s\n", current, name)
+	rp := filepath.Join(env.LocalPath, name)
+	scpCmdStr := fmt.Sprintf("'tar zcf - %s && rm -rf %s' | tar zxf -", rp, rp)
+	execRemoteCommand(scpCmdStr)
+
+	time.Sleep(3 * time.Second)
 }
 
 func init() {
