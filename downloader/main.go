@@ -7,8 +7,8 @@ import (
 	"os/exec"
 	"os/signal"
 	"runtime"
+	"strings"
 
-	// "path/filepath"
 	"sync"
 	"time"
 )
@@ -20,22 +20,22 @@ type dirInfo struct {
 
 func getDirectories(wg *sync.WaitGroup, dirChan chan dirInfo, sigChan chan os.Signal) {
 	defer wg.Done()
-	// cmdString := fmt.Sprintf("ssh -i %s %s@%s ls -l %s | grep '^d' | awk '{print $9}'", identityFile, serverUser, serverIP, remotePath)
-	// cmd := exec.Command("/bin/sh", "-c", cmdString)
+	cmdString := fmt.Sprintf("ssh -i %s %s@%s ls -l %s | grep '^d' | awk '{print $9}' | tr '\n' ' '", env.IdentityPath, env.ServerUser, env.ServerIP, env.RemotePath)
+	cmd := exec.Command("/bin/sh", "-c", cmdString)
 
-	// output, err := cmd.Output()
-	// if err != nil {
-	//     log.Fatalf("Failed to list directories: %v\n", err)
-	// }
-	// dirs := filepath.SplitList(string(output))
+	output, err := cmd.Output()
+	if err != nil {
+		log.Fatalf("[ERROR] Failed to list directories: %v\n", err)
+	}
 
-	dirs := []string{"dir1", "dir2", "dir3", "dir4", "dir5", "dir6", "dir7", "dir8", "dir9", "dir10"}
+	dirs := strings.Split(strings.Trim(string(output), " "), " ")
+	log.Printf("[INFO] Found %d directories\n", len(dirs))
 
 L:
 	for _, dir := range dirs {
 		select {
 		case <-sigChan:
-			fmt.Println("Ctrl+C received, stopping the directory listing...")
+			log.Println("[INFO] Ctrl+C received, stopping...")
 			break L
 		default:
 			dirChan <- dirInfo{name: dir, done: false}
@@ -76,7 +76,7 @@ func downloadDirectory(name string, current int) {
 func init() {
 	LoadEnv()
 	if err := exec.Command("mkdir", "-p", env.LocalPath).Run(); err != nil {
-		log.Fatalf("Failed to create the local directory: %v\n", err)
+		log.Fatalf("[ERROR] Failed to create the local directory: %v\n", err)
 	}
 }
 
@@ -103,7 +103,6 @@ func main() {
 			sem <- true
 			progress.mu.Lock()
 			progress.current++
-			fmt.Printf("Current progress: %d\n", progress.current)
 			go func(dirName string, current int) {
 				downloadDirectory(dirName, current)
 				<-sem
