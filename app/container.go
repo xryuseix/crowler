@@ -103,13 +103,15 @@ func (c *Container) Fetch(_url string) (Visited, []*Queue, error) {
 			continue
 		}
 		queues = append(queues, &Queue{
-			URL:    u.String(),
-			Domain: u.Host,
+			URLHash: lib.Hash(u.String()),
+			URL:     u.String(),
+			Domain:  u.Host,
 		})
 	}
 
 	// TODO: URLからparamを消す
 	v := Visited{
+		URLHash: lib.Hash(url.String()),
 		URL:     url.String(),
 		Domain:  url.Host,
 		SaveDir: d.SaveDir,
@@ -126,27 +128,24 @@ func (c *Container) QueueingURL(queues []*Queue) error {
 	}
 
 	queues = lib.Unique(queues)
-	for i, q := range queues {
-		queues[i].URL = SliceLongerStr(q.URL)
-	}
 
 	var validq []Queue
 	if config.Configs.Duplicate == "same-url" {
 		urls := make([]string, len(queues))
 		for i, q := range queues {
-			urls[i] = q.URL
+			urls[i] = q.URLHash
 		}
 		var v []Visited
-		if err := c.db.Where("url IN (?)", urls).Find(&v).Error; err != nil {
+		if err := c.db.Where("url_hash IN (?)", urls).Find(&v).Error; err != nil {
 			return err
 		}
 		vmap := make(map[string]bool, len(v))
 		for _, vv := range v {
-			vmap[vv.URL] = true
+			vmap[vv.URLHash] = true
 		}
 
 		for _, q := range queues {
-			if _, ok := vmap[q.URL]; ok {
+			if _, ok := vmap[q.URLHash]; ok {
 				continue
 			}
 			validq = append(validq, *q)

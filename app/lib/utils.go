@@ -1,6 +1,8 @@
 package lib
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"net/url"
 	"strings"
 )
@@ -55,4 +57,9 @@ func ToAbsoluteLink(base *url.URL, link string) string {
 		return base.ResolveReference(&url.URL{Path: link}).String()
 	}
 	return ""
+}
+
+func Hash(s string) string {
+	b := sha256.Sum256([]byte(s))
+	return hex.EncodeToString(b[:])
 }

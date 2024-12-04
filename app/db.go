@@ -17,14 +17,16 @@ import (
 )
 
 type Queue struct {
-	Id     int    `gorm:"primaryKey;autoIncrement;not null"`
-	URL    string `gorm:"unique;not null"`
-	Domain string `gorm:"not null"`
-	Hops   int    `gorm:"default:0"`
+	Id      int    `gorm:"primaryKey;autoIncrement;not null"`
+	URLHash string `gorm:"unique;not null"`
+	URL     string `gorm:"not null"`
+	Domain  string `gorm:"not null"`
+	Hops    int    `gorm:"default:0"`
 }
 
 type Visited struct {
-	URL     string `gorm:"primaryKey;unique;not null"`
+	URLHash string `gorm:"primaryKey;unique;not null"`
+	URL     string `gorm:"not null"`
 	Domain  string `gorm:"not null"`
 	SaveDir string `gorm:"not null"`
 	Hops    int    `gorm:"not null"`
@@ -78,7 +80,6 @@ func InsertSeed(db *gorm.DB) {
 	var dupMap = make(map[string]bool)
 	dup := config.Configs.Duplicate
 	for _, s := range lines {
-		s = SliceLongerStr(s)
 		u, err := url.Parse(s)
 		if err != nil {
 			log.Print(err)
@@ -104,8 +105,9 @@ func InsertSeed(db *gorm.DB) {
 	var q []*Queue = make([]*Queue, len(urls))
 	for i, u := range urls {
 		q[i] = &Queue{
-			URL:    u.String(),
-			Domain: u.Host,
+			URLHash: lib.Hash(u.String()),
+			URL:     u.String(),
+			Domain:  u.Host,
 		}
 	}
 	db.Create(&q)
@@ -120,18 +122,10 @@ func InsertRandomSeed(db *gorm.DB) {
 			log.Fatal(err)
 		}
 		q = append(q, &Queue{
-			URL:    u.String(),
-			Domain: u.Host,
+			URLHash: lib.Hash(u.String()),
+			URL:     u.String(),
+			Domain:  u.Host,
 		})
 	}
 	db.Create(&q)
-}
-
-func SliceLongerStr(s string) string {
-	// NOTE: https://stackoverflow.com/questions/70123567/index-row-size-2712-exceeds-btree-version-4-maximum-2704-for-index-while-doing
-	if len(s) > 1000 {
-		log.Printf("URL is too long: %s", s[0:min(100, len(s))])
-		s = s[0:min(1000, len(s))]
-	}
-	return s
 }

@@ -1,7 +1,6 @@
 package lib
 
 import (
-	"fmt"
 	"net/url"
 	"reflect"
 	"sort"
@@ -94,52 +93,6 @@ func TestSplitBySpace(t *testing.T) {
 	}
 }
 
-func TestUnique(t *testing.T) {
-	tests := []struct {
-		name     string
-		input    []interface{}
-		expected []interface{}
-	}{
-		{
-			name:     "Unique empty slice",
-			input:    []interface{}{},
-			expected: []interface{}{},
-		},
-		{
-			name:     "Unique integers",
-			input:    []interface{}{1, 2, 2, 3, 4, 4, 5},
-			expected: []interface{}{1, 2, 3, 4, 5},
-		},
-		{
-			name:     "Unique strings",
-			input:    []interface{}{"apple", "banana", "apple", "cherry", "banana"},
-			expected: []interface{}{"apple", "banana", "cherry"},
-		},
-		{
-			name:     "Unique mixed types",
-			input:    []interface{}{"apple", 1, "banana", 2, "apple", 1},
-			expected: []interface{}{"apple", 1, "banana", 2},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := Unique(tt.input)
-			expected := tt.expected
-			sort.Slice(result, func(i, j int) bool {
-				return fmt.Sprintf("%v", result[i]) < fmt.Sprintf("%v", result[j])
-			})
-			sort.Slice(expected, func(i, j int) bool {
-				return fmt.Sprintf("%v", expected[i]) < fmt.Sprintf("%v", expected[j])
-			})
-
-			if !reflect.DeepEqual(result, expected) {
-				t.Errorf("expected %v, got %v", tt.expected, result)
-			}
-		})
-	}
-}
-
 func TestToAbsoluteLink(t *testing.T) {
 	baseURL, _ := url.Parse("https://example.com")
 
@@ -184,6 +137,69 @@ func TestToAbsoluteLink(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := ToAbsoluteLinks(tt.base, tt.links)
+			if !reflect.DeepEqual(result, tt.expected) {
+				t.Errorf("expected %v, got %v", tt.expected, result)
+			}
+		})
+	}
+}
+
+func TestHash(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "Hash empty string",
+			input:    "",
+			expected: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := Hash(tt.input)
+			if result != tt.expected {
+				t.Errorf("expected %v, got %v", tt.expected, result)
+			}
+		})
+	}
+}
+
+func TestUnique(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    []string
+		expected []string
+	}{
+		{
+			name:     "Unique empty slice",
+			input:    []string{},
+			expected: []string{},
+		},
+		{
+			name:     "Unique with no duplicates",
+			input:    []string{"go", "lang", "test"},
+			expected: []string{"go", "lang", "test"},
+		},
+		{
+			name:     "Unique with duplicates",
+			input:    []string{"go", "lang", "test", "go", "lang"},
+			expected: []string{"go", "lang", "test"},
+		},
+		{
+			name:     "Unique with all duplicates",
+			input:    []string{"go", "go", "go"},
+			expected: []string{"go"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := Unique(tt.input)
+			sort.Strings(result)
+			sort.Strings(tt.expected)
 			if !reflect.DeepEqual(result, tt.expected) {
 				t.Errorf("expected %v, got %v", tt.expected, result)
 			}

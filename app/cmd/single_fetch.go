@@ -5,8 +5,8 @@ import (
 	"log"
 	"net/url"
 
-	"xryuseix/crowler/app/fetch"
 	"xryuseix/crowler/app/config"
+	"xryuseix/crowler/app/fetch"
 )
 
 func init() {
