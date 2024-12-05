@@ -55,11 +55,11 @@ func (d *Downloader) DownloadFiles() error {
 	contentDir := filepath.Join(downloadDir, "contents")
 	if fc.CssJsOther {
 		if _, err := os.Stat(d.SaveDir); os.IsNotExist(err) {
-			os.MkdirAll(contentDir, os.ModePerm)
+			os.MkdirAll(contentDir, 0777)
 		}
 	} else if fc.Html || fc.ScreenShot {
 		if _, err := os.Stat(downloadDir); os.IsNotExist(err) {
-			os.MkdirAll(downloadDir, os.ModePerm)
+			os.MkdirAll(downloadDir, 0777)
 		}
 	}
 
@@ -119,10 +119,10 @@ func (d *Downloader) download(filePath string, url *url.URL) error {
 	fmt.Printf("Downloading %s... -> %s...\n", u[:min(len(u), 64)], filePath[:min(len(filePath), 64)])
 	dir := filepath.Dir(filePath)
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		os.MkdirAll(dir, os.ModePerm)
+		os.MkdirAll(dir, 0777)
 	}
 
-	out, err := os.Create(filePath)
+	out, err := os.Create(filePath, 0777)
 	defer out.Close()
 	if err != nil {
 		return err
@@ -137,7 +137,7 @@ func (d *Downloader) SaveHTML(downloadDir string) error {
 	htmlPath := filepath.Join(downloadDir, "index.html")
 	oldHtmlPath := filepath.Join(downloadDir, "index.old.html")
 	write := func(path string, html string) error {
-		out, err := os.Create(path)
+		out, err := os.Create(path, 0777)
 		defer out.Close()
 		if err != nil {
 			return err
@@ -156,7 +156,7 @@ func (d *Downloader) SaveHTML(downloadDir string) error {
 
 func (d *Downloader) SaveSS(downloadDir string) error {
 	htmlPath := filepath.Join(downloadDir, "screenshot.png")
-	out, err := os.Create(htmlPath)
+	out, err := os.Create(htmlPath, 0777)
 	defer out.Close()
 	if err != nil {
 		return err
@@ -167,7 +167,7 @@ func (d *Downloader) SaveSS(downloadDir string) error {
 
 func (d *Downloader) SaveTable(downloadDir string) error {
 	tablePath := filepath.Join(downloadDir, "url_table.json")
-	out, err := os.Create(tablePath)
+	out, err := os.Create(tablePath, 0777)
 	defer out.Close()
 	if err != nil {
 		return err
