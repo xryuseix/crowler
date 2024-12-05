@@ -6,11 +6,10 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
-	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
-	"time"
+	"bytes"
 )
 
 type dirInfo struct {
@@ -22,11 +21,20 @@ func execRemoteCommand(_cmd string) string {
 	sshCmd := fmt.Sprintf("ssh -i %s %s@%s %s", env.IdentityPath, env.ServerUser, env.ServerIP, _cmd)
 	cmd := exec.Command("/bin/sh", "-c", sshCmd)
 
-	output, err := cmd.Output()
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	err := cmd.Run()
 	if err != nil {
-		log.Fatalf("[ERROR] Failed to list directories: %v\n", err)
+		log.Printf("[ERROR] Failed to execute command: %v\n", err)
 	}
-	return string(output)
+
+	if len(stderr.String()) > 0 {
+		fmt.Printf("[INFO] Error: %s\n", stderr.String())
+	}
+
+	return string(stdout.String())
 }
 
 func getDirectories(wg *sync.WaitGroup, dirChan chan dirInfo, sigChan chan os.Signal) {
@@ -52,11 +60,8 @@ L:
 
 func downloadDirectory(name string, current int) {
 	fmt.Printf("[%d] Downloading directory: %s\n", current, name)
-	rp := filepath.Join(env.LocalPath, name)
-	scpCmdStr := fmt.Sprintf("'tar zcf - %s && rm -rf %s' | tar zxf -", rp, rp)
+	scpCmdStr := fmt.Sprintf("'cd %s && tar zcf - %s && rm -rf %s' | tar zxf - -C %s", env.RemotePath, name, name, env.LocalPath)
 	execRemoteCommand(scpCmdStr)
-
-	time.Sleep(3 * time.Second)
 }
 
 func init() {
