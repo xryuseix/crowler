@@ -25,7 +25,7 @@ type Config struct {
 	WaitTime      int          `yaml:"wait_time" default:"1"`
 	Duplicate     string       `yaml:"duplicate" default:"same-domain"`
 	FetchContents FetchContent `yaml:"fetch_contents"`
-	SeedFile      string       `yaml:"seed_file" default:""`
+	SeedFiles     []string     `yaml:"seed_files" default:"[]"`
 	RandomSeed    bool         `yaml:"random_seed" default:"false"`
 	OutputDir     string       `yaml:"output_dir" default:"out"`
 	Timeout       Timeout      `yaml:"timeout"`

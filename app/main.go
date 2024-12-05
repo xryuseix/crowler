@@ -26,12 +26,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	if config.Configs.SeedFile != "" {
-		InsertSeed(db)
-	}
-	if config.Configs.RandomSeed {
-		InsertRandomSeed(db)
-	}
+	InsertSeed(db)
+	InsertRandomSeed(db)
 
 	var wg sync.WaitGroup
 	wgDone := make(chan bool)

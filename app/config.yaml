@@ -18,7 +18,8 @@ fetch_contents:
   css_js_other: true
 
 # 初期データの設定
-seed_file: seed.txt
+seed_files:
+  - seed.txt
 random_seed: false
 
 # 出力先の設定

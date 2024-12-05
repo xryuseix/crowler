@@ -46,7 +46,7 @@ func (c *Container) Start() {
 			continue
 		}
 
-		v, nq, err := c.Fetch(q.URL)
+		v, nq, err := c.Fetch(&q)
 		if err != nil {
 			log.Print(err)
 			continue
@@ -71,8 +71,8 @@ func (c *Container) Stop() {
 	fmt.Printf("[%d] stopped\n", c.id)
 }
 
-func (c *Container) Fetch(_url string) (Visited, []*Queue, error) {
-	url, err := url.Parse(_url)
+func (c *Container) Fetch(q *Queue) (Visited, []*Queue, error) {
+	url, err := url.Parse(q.URL)
 	if err != nil {
 		log.Print(err)
 		return Visited{}, []*Queue{}, err
@@ -103,9 +103,10 @@ func (c *Container) Fetch(_url string) (Visited, []*Queue, error) {
 			continue
 		}
 		queues = append(queues, &Queue{
-			URLHash: lib.Hash(u.String()),
-			URL:     u.String(),
-			Domain:  u.Host,
+			URLHash:  lib.Hash(u.String()),
+			URL:      u.String(),
+			Domain:   u.Host,
+			SeedFile: q.SeedFile,
 		})
 	}
 

@@ -17,19 +17,21 @@ import (
 )
 
 type Queue struct {
-	Id      int    `gorm:"primaryKey;autoIncrement;not null"`
-	URLHash string `gorm:"unique;not null"`
-	URL     string `gorm:"not null"`
-	Domain  string `gorm:"not null"`
-	Hops    int    `gorm:"default:0"`
+	Id       int    `gorm:"primaryKey;autoIncrement;not null"`
+	URLHash  string `gorm:"unique;not null"`
+	URL      string `gorm:"not null"`
+	Domain   string `gorm:"not null"`
+	Hops     int    `gorm:"default:0"`
+	SeedFile string `gorm:""`
 }
 
 type Visited struct {
-	URLHash string `gorm:"primaryKey;unique;not null"`
-	URL     string `gorm:"not null"`
-	Domain  string `gorm:"not null"`
-	SaveDir string `gorm:"not null"`
-	Hops    int    `gorm:"not null"`
+	URLHash  string `gorm:"primaryKey;unique;not null"`
+	URL      string `gorm:"not null"`
+	Domain   string `gorm:"not null"`
+	SaveDir  string `gorm:"not null"`
+	Hops     int    `gorm:"not null"`
+	SeedFile string `gorm:""`
 }
 
 func CreateDB() (*gorm.DB, error) {
@@ -66,54 +68,47 @@ func BuildDB() (*gorm.DB, error) {
 }
 
 func InsertSeed(db *gorm.DB) {
-	if config.Configs.SeedFile == "" {
+	if len(config.Configs.SeedFiles) == 0 {
 		return
 	}
-	b, err := os.ReadFile(config.Configs.SeedFile)
-	if err != nil {
-		log.Fatal(err)
-	}
-	lines := lib.Unique(strings.Split(string(b), "\n"))
-	lines = lib.Filter(lines, func(s string) bool { return s != "" })
 
-	var urls []*url.URL
-	var dupMap = make(map[string]bool)
-	dup := config.Configs.Duplicate
-	for _, s := range lines {
-		u, err := url.Parse(s)
+	c := NewContainer(-1, db)
+
+	for _, f := range config.Configs.SeedFiles {
+		b, err := os.ReadFile(f)
 		if err != nil {
-			log.Print(err)
-			continue
+			log.Fatal(err)
 		}
-		if dup == "same-url" {
-			if _, ok := dupMap[u.String()]; ok {
-				continue
-			}
-			dupMap[u.String()] = true
-			urls = append(urls, u)
-		} else if dup == "same-domain" {
-			if _, ok := dupMap[u.Host]; ok {
-				continue
-			}
-			dupMap[u.Host] = true
-			urls = append(urls, u)
-		} else {
-			urls = append(urls, u)
-		}
-	}
+		l := lib.Unique(strings.Split(string(b), "\n"))
+		l = lib.Filter(l, func(s string) bool { return s != "" })
 
-	var q []*Queue = make([]*Queue, len(urls))
-	for i, u := range urls {
-		q[i] = &Queue{
-			URLHash: lib.Hash(u.String()),
-			URL:     u.String(),
-			Domain:  u.Host,
+		var urls []*url.URL
+		for _, u := range l {
+			u, err := url.Parse(u)
+			if err != nil {
+				log.Print(err)
+				continue
+			}
+			urls = append(urls, u)
 		}
+
+		var q []*Queue = make([]*Queue, len(urls))
+		for i, u := range urls {
+			q[i] = &Queue{
+				URLHash:  lib.Hash(u.String()),
+				URL:      u.String(),
+				Domain:   u.Host,
+				SeedFile: f,
+			}
+		}
+		c.QueueingURL(q)
 	}
-	db.Create(&q)
 }
 
 func InsertRandomSeed(db *gorm.DB) {
+	if config.Configs.RandomSeed == false {
+		return
+	}
 	n := config.Configs.ThreadMax * 2
 	var q []*Queue = make([]*Queue, 0, n)
 	for i := 0; i < n; i++ {
