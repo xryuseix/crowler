@@ -1,6 +1,6 @@
 # 🐦‍⬛ Crowler
 
-**_A Generic Docker-based Web Crawler that can be used to crawl any website and extract data from it._**
+**_A Generic Docker-based Web Crawler using chrome-devtools-protocol._**
 
 <div align="center">
   <img src="./demo.gif" alt="Demo" />
